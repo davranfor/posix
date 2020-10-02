@@ -2,9 +2,7 @@
 
 #include <stdio.h>
 #include <signal.h>
-#include <sys/ipc.h>
 #include <sys/shm.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 int main(void)
