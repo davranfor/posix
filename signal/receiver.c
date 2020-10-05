@@ -11,17 +11,33 @@ int sid;
 
 static void SIGINT_handler(int sig)
 {
-    signal(sig, SIG_IGN);
+    if (signal(sig, SIG_IGN) == SIG_ERR)
+    {
+        perror("signal");
+        exit(EXIT_FAILURE);
+    }
     printf("From SIGINT: just got a %d (SIGINT ^C) signal\n", sig);
-    signal(sig, SIGINT_handler);
+    if (signal(sig, SIGINT_handler) == SIG_ERR)
+    {
+        perror("signal");
+        exit(EXIT_FAILURE);
+    }
 }
 
 static void SIGQUIT_handler(int sig)
 {
     signal(sig, SIG_IGN);
     printf("From SIGQUIT: just got a %d (SIGQUIT ^\\) signal and is about to quit\n", sig);
-    shmdt(shm);
-    shmctl(sid, IPC_RMID, NULL);
+    if (shmdt(shm) == -1)
+    {
+        perror("shmdt");
+        exit(EXIT_FAILURE);
+    }
+    if (shmctl(sid, IPC_RMID, NULL) == -1)
+    {
+        perror("shmctl");
+        exit(EXIT_FAILURE);
+    }
     exit(3);
 }
 
@@ -32,13 +48,13 @@ int main(void)
 
     if (signal(SIGINT, SIGINT_handler) == SIG_ERR)
     {
-        printf("SIGINT install error\n");
-        exit(1);
+        perror("signal");
+        exit(EXIT_FAILURE);
     }
     if (signal(SIGQUIT, SIGQUIT_handler) == SIG_ERR)
     {
-        printf("SIGQUIT install error\n");
-        exit(2);
+        perror("signal");
+        exit(EXIT_FAILURE);
     }
     key = ftok(".", 's');    
     if (key == -1)

@@ -45,12 +45,20 @@ int main(void)
 
         if ((c == 'q') || (c == 'Q') || (c == EOF))
         {
-            kill(pid, SIGQUIT);
+            if (kill(pid, SIGQUIT) == -1)
+            {
+                perror("kill");
+                exit(EXIT_FAILURE);
+            }
             break;
         }
         if ((c == 'i') || (c == 'I'))
         {
-            kill(pid, SIGINT);
+            if (kill(pid, SIGINT) == -1)
+            {
+                perror("kill");
+                exit(EXIT_FAILURE);
+            }
         }
         if (c != '\n')
         {
