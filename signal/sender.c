@@ -1,6 +1,7 @@
 #define _XOPEN_SOURCE
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <sys/shm.h>
 #include <unistd.h>
@@ -8,22 +9,41 @@
 int main(void)
 {
     pid_t pid;
-    key_t MyKey;
-    int ShmID;
-    pid_t *ShmPTR;
+    key_t key;
+    pid_t *shm;
+    int sid;
 
-    MyKey = ftok(".", 's');
-    ShmID = shmget(MyKey, sizeof(pid_t), 0666);
-    ShmPTR = (pid_t *)shmat(ShmID, NULL, 0);
-    pid = *ShmPTR;                
-    shmdt(ShmPTR);
+    key = ftok(".", 's');
+    if (key == -1)
+    {
+        perror("ftok");
+        exit(EXIT_FAILURE);
+    }
+    sid = shmget(key, sizeof(pid_t), 0666);
+    if (sid == -1)
+    {
+        perror("shmget");
+        exit(EXIT_FAILURE);
+    }
+    shm = shmat(sid, NULL, 0);
+    if (shm == (void *)-1)
+    {
+        perror("shmat");
+        exit(EXIT_FAILURE);
+    }
+    pid = *shm;
+    if (shmdt(shm) == -1)
+    {
+        perror("shmdt");
+        exit(EXIT_FAILURE);
+    }
     while (1)
     {
         puts("Press 'i' to send 'SIGINT' or 'q' to send 'SIGQUIT'");
 
         int c = fgetc(stdin);
 
-        if ((c == 'q') || (c == 'Q'))
+        if ((c == 'q') || (c == 'Q') || (c == EOF))
         {
             kill(pid, SIGQUIT);
             break;
@@ -32,7 +52,10 @@ int main(void)
         {
             kill(pid, SIGINT);
         }
-        while (((c = getc(stdin)) != '\n') && (c != EOF));
+        if (c != '\n')
+        {
+            while (((c = getc(stdin)) != '\n') && (c != EOF));
+        }
     }
     return 0;
 }

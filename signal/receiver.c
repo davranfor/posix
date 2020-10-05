@@ -6,8 +6,8 @@
 #include <sys/shm.h>
 #include <unistd.h>
 
-pid_t *ShmPTR;
-int ShmID;
+pid_t *shm;
+int sid;
 
 static void SIGINT_handler(int sig)
 {
@@ -20,15 +20,15 @@ static void SIGQUIT_handler(int sig)
 {
     signal(sig, SIG_IGN);
     printf("From SIGQUIT: just got a %d (SIGQUIT ^\\) signal and is about to quit\n", sig);
-    shmdt(ShmPTR);
-    shmctl(ShmID, IPC_RMID, NULL);
+    shmdt(shm);
+    shmctl(sid, IPC_RMID, NULL);
     exit(3);
 }
 
 int main(void)
 {
     pid_t pid = getpid();
-    key_t MyKey;
+    key_t key;
 
     if (signal(SIGINT, SIGINT_handler) == SIG_ERR)
     {
@@ -40,10 +40,25 @@ int main(void)
         printf("SIGQUIT install error\n");
         exit(2);
     }
-    MyKey = ftok(".", 's');    
-    ShmID = shmget(MyKey, sizeof(pid_t), IPC_CREAT | 0666);
-    ShmPTR = (pid_t *) shmat(ShmID, NULL, 0);
-    *ShmPTR = pid;
+    key = ftok(".", 's');    
+    if (key == -1)
+    {
+        perror("ftok");
+        exit(EXIT_FAILURE);
+    }
+    sid = shmget(key, sizeof(pid_t), IPC_CREAT | 0666);
+    if (sid == -1)
+    {
+        perror("shmget");
+        exit(EXIT_FAILURE);
+    }
+    shm = shmat(sid, NULL, 0);
+    if (shm == (void *)-1)
+    {
+        perror("shmat");
+        exit(EXIT_FAILURE);
+    }
+    *shm = pid;
     puts("Waiting the sender ...");            
     while (1)
     {
