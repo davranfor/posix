@@ -6,8 +6,8 @@
 #include <sys/shm.h>
 #include <unistd.h>
 
-pid_t *shm;
-int sid;
+static pid_t *shm;
+static int sid;
 
 static void SIGINT_handler(int sig)
 {
@@ -43,19 +43,8 @@ static void SIGQUIT_handler(int sig)
 
 int main(void)
 {
-    pid_t pid = getpid();
     key_t key;
 
-    if (signal(SIGINT, SIGINT_handler) == SIG_ERR)
-    {
-        perror("signal");
-        exit(EXIT_FAILURE);
-    }
-    if (signal(SIGQUIT, SIGQUIT_handler) == SIG_ERR)
-    {
-        perror("signal");
-        exit(EXIT_FAILURE);
-    }
     key = ftok(".", 's');    
     if (key == -1)
     {
@@ -74,7 +63,17 @@ int main(void)
         perror("shmat");
         exit(EXIT_FAILURE);
     }
-    *shm = pid;
+    *shm = getpid();
+    if (signal(SIGINT, SIGINT_handler) == SIG_ERR)
+    {
+        perror("signal");
+        exit(EXIT_FAILURE);
+    }
+    if (signal(SIGQUIT, SIGQUIT_handler) == SIG_ERR)
+    {
+        perror("signal");
+        exit(EXIT_FAILURE);
+    }
     puts("Waiting the sender ...");            
     while (1)
     {
