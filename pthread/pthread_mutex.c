@@ -1,6 +1,7 @@
 // gcc -std=c11 -Wall -pedantic -o demo demo.c -lpthread
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -10,9 +11,17 @@ static int count = 0;
 void *thread_handler(void *arg)
 {
     (void) arg;
-    pthread_mutex_lock(&mutex);
+    if (pthread_mutex_lock(&mutex) != 0)
+    {
+        perror("pthread_mutex_lock");
+        exit(EXIT_FAILURE);
+    }
     printf("%d\n", ++count);
-    pthread_mutex_unlock(&mutex);
+    if (pthread_mutex_unlock(&mutex) != 0)
+    {
+        perror("pthread_mutex_unlock");
+        exit(EXIT_FAILURE);
+    }
     return NULL;
 }
 
@@ -23,11 +32,19 @@ int main(void)
 
     for (int i = 0; i < NTHREADS; i++)
     {
-        pthread_create(&thread[i], NULL, thread_handler, NULL);
+        if (pthread_create(&thread[i], NULL, thread_handler, NULL) != 0)
+        {
+            perror("pthread_create");
+            exit(EXIT_FAILURE);
+        }
     }
     for (int i = 0; i < NTHREADS; i++)
     {
-        pthread_join(thread[i], NULL);
+        if (pthread_join(thread[i], NULL) != 0)
+        {
+            perror("pthread_join");
+            exit(EXIT_FAILURE);
+        }
     }
     return 0;
 }
