@@ -5,7 +5,7 @@
 #include <stdatomic.h>
 #include <pthread.h>
 
-static int normal_counter = 0;
+static signed int normal_counter = 0;
 static atomic_int atomic_counter = 0;
 
 void *thread_handler(void *arg)
