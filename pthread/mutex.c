@@ -4,19 +4,19 @@
 #include <stdlib.h>
 #include <pthread.h>
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int count = 0;
+static int counter;
 
 void *thread_handler(void *arg)
 {
-    (void) arg;
+    (void)arg;
     if (pthread_mutex_lock(&mutex) != 0)
     {
         perror("pthread_mutex_lock");
         exit(EXIT_FAILURE);
     }
-    printf("%d\n", ++count);
+    printf("%d\n", ++counter);
     if (pthread_mutex_unlock(&mutex) != 0)
     {
         perror("pthread_mutex_unlock");
