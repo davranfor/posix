@@ -14,7 +14,7 @@ void *thread_handler(void *arg)
     for (int i = 0; i < 10000; i++)
     {
         ++normal_counter; // Undefined behavior
-        atomic_fetch_add(&atomic_counter, 1);
+        ++atomic_counter;
     }
     return NULL;
 }
