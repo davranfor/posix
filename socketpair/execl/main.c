@@ -7,6 +7,7 @@
 int main(void)
 {
     int fd[2];
+
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, fd) == -1)
     {
         perror("socketpair");
