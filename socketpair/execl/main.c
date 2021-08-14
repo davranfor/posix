@@ -16,6 +16,7 @@ int main(void)
     printf("fd[0] = %d\n", fd[0]);
     printf("fd[1] = %d\n", fd[1]);
 
+    char args[2] = "";
     int pid;
 
     if ((pid = fork()) == -1)
@@ -28,19 +29,9 @@ int main(void)
         puts("I'm, the child");
 
         close(fd[1]);
-        if (dup2(fd[0], STDIN_FILENO) != STDIN_FILENO) 
-        {
-            perror("dup2");
-            exit(EXIT_FAILURE);
-        }
-        if (dup2(fd[0], STDOUT_FILENO) != STDOUT_FILENO) 
-        {
-            perror("dup2");
-            exit(EXIT_FAILURE);
-        }
-        close(fd[0]);
+        args[0] = (char)fd[0];
 
-        execl("./child", "./child", (char *)NULL);
+        execl("./child", "child", args, (char *)NULL);
         perror("execl");
     }
     else
@@ -48,19 +39,9 @@ int main(void)
         puts("I'm, the parent");
 
         close(fd[0]);
-        if (dup2(fd[1], STDIN_FILENO) != STDIN_FILENO) 
-        {
-            perror("dup2");
-            exit(EXIT_FAILURE);
-        }
-        if (dup2(fd[1], STDOUT_FILENO) != STDOUT_FILENO) 
-        {
-            perror("dup2");
-            exit(EXIT_FAILURE);
-        }
-        close(fd[1]);
+        args[0] = (char)fd[1];
 
-        execl("./parent", "./parent", (char *)NULL);
+        execl("./parent", "parent", args, (char *)NULL);
         perror("execl");
     }
     return 0;

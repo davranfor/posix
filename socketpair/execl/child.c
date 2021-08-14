@@ -3,22 +3,25 @@
 #include <string.h>
 #include <stdio.h>
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    (void)argc;
+
+    int fd = argv[1][0];
     char str[128];
     ssize_t n = 0;
 
-    while ((n = read(1, str, sizeof str)) != -1)
+    while ((n = read(fd, str, sizeof str)) != -1)
     {
         str[n] = '\0';
-        fprintf(stderr, "parent says %s\n", str);
+        printf("parent says %s\n", str);
         if (strcmp("quit", str) == 0)
         {
-            fprintf(stderr, "Bye!\n");
-            close(0);
+            puts("Bye!");
+            close(fd);
             break;
         }
-        if (write(0, str, strlen(str)) == -1)
+        if (write(fd, str, strlen(str)) == -1)
         {
             perror("write");
             exit(EXIT_FAILURE);

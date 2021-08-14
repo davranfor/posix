@@ -3,20 +3,23 @@
 #include <string.h>
 #include <stdio.h>
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    char str[128];
+    (void)argc;
+
+    int fd = argv[1][0];
     char *words[] = {"one", "two", "three", "quit"};
     char **word = words;
+    char str[128];
 
     for (;;)
     {
-        if (write(0, *word, strlen(*word)) == -1)
+        if (write(fd, *word, strlen(*word)) == -1)
         {
             perror("write");
             exit(EXIT_FAILURE);
         }
-        if (read(1, str, sizeof str) <= 0)
+        if (read(fd, str, sizeof str) <= 0)
         {
             break;
         }
