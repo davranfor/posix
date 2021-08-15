@@ -15,11 +15,8 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    printf("fd[0] = %d\n", fd[0]);
-    printf("fd[1] = %d\n", fd[1]);
-
+    char str[128] = {0};
     int pid;
-    char str[128];
 
     if ((pid = fork()) == -1)
     {
@@ -32,11 +29,11 @@ int main(void)
 
         close(fd[0]);
 
-        ssize_t n = 0;
+        ssize_t len = 0;
 
-        while ((n = read(fd[1], str, sizeof str)) != -1)
+        while ((len = read(fd[1], str, sizeof str)) != -1)
         {
-            str[n] = '\0';
+            str[len] = '\0';
             printf("parent says %s\n", str);
             if (strcmp("quit", str) == 0)
             {
