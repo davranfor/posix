@@ -12,8 +12,8 @@ int main(void)
     cmd = popen("ls -l", "r");
     if (cmd == NULL)
     {
-    perror("popen");
-    exit(EXIT_FAILURE);
+        perror("popen");
+        exit(EXIT_FAILURE);
     }
     while (fgets(result, sizeof(result), cmd))
     {
