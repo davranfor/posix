@@ -6,20 +6,20 @@ int pclose(FILE *);
 
 int main(void)
 {
-	char result[1024];
-	FILE *cmd;
+    char result[1024];
+    FILE *cmd;
 
-	cmd = popen("ls -l", "r");
-	if (cmd == NULL)
+    cmd = popen("ls -l", "r");
+    if (cmd == NULL)
     {
-		perror("popen");
-		exit(EXIT_FAILURE);
-	}
-	while (fgets(result, sizeof(result), cmd))
+    perror("popen");
+    exit(EXIT_FAILURE);
+    }
+    while (fgets(result, sizeof(result), cmd))
     {
-		printf("output: %s", result);
-	}
-	pclose(cmd);
-	return 0;
+        printf("output: %s", result);
+    }
+    pclose(cmd);
+    return 0;
 }
 
