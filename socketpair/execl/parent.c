@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     int fd = argv[1][0];
     char *words[] = {"one", "two", "three", "quit"};
     char **word = words;
-    char str[128];
+    char str[128] = {0};
 
     for (;;)
     {

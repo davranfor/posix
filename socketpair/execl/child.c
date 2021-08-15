@@ -8,12 +8,12 @@ int main(int argc, char *argv[])
     (void)argc;
 
     int fd = argv[1][0];
-    char str[128];
-    ssize_t n = 0;
+    char str[128] = {0};
+    ssize_t len = 0;
 
-    while ((n = read(fd, str, sizeof str)) != -1)
+    while ((len = read(fd, str, sizeof str)) != -1)
     {
-        str[n] = '\0';
+        str[len] = '\0';
         printf("parent says %s\n", str);
         if (strcmp("quit", str) == 0)
         {
