@@ -6,11 +6,9 @@
 
 int main(void)
 {
-    // FIFO file path
     char *myfifo = "/tmp/myfifo";
     int fd;
 
-    // Open FIFO for write only
     if ((fd = open(myfifo, O_WRONLY)) == -1)
     {
         perror("open");

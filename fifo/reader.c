@@ -7,13 +7,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-
 int main(void)
 {
-    // FIFO file path
     char *myfifo = "/tmp/myfifo";
 
-    // Create FIFO
     if (mkfifo(myfifo, 0666) == -1)
     {
         if (errno != EEXIST)
@@ -24,15 +21,15 @@ int main(void)
     }
     puts("Waiting writer");
 
-    char str[128] = {0};
     int fd;
 
-    // Open FIFO for read only
     if ((fd = open(myfifo, O_RDONLY)) == -1)
     {
         perror("open");
         exit(EXIT_FAILURE);
     }
+
+    char str[128] = {0};
 
     while (1)
     {
