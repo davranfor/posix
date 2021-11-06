@@ -1,5 +1,3 @@
-// gcc -std=c11 -Wall -pedantic -o demo atomic.c -lpthread
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdatomic.h>
