@@ -27,11 +27,8 @@ int main(void)
         printf("I'm the parent\n");
         // Do the parent stuff ...
         data = 2;
-
-        int status;
-
         // Wait for child process
-        if (wait(&status) == -1)
+        if (wait(NULL) == -1)
         {
             perror("wait");
             exit(EXIT_FAILURE);
@@ -42,7 +39,9 @@ int main(void)
         }
     }
     // Code executed from both the parent and the child
-    printf("The %s filled data with %d\n", pid != 0 ? "parent" : "child", data);
+    printf("The %s process data is %d\n",
+            pid != 0 ? "parent" : "child", data
+    );
     return 0;
 }
 
