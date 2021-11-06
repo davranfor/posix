@@ -1,13 +1,11 @@
-/*
-sudo apt install lua5.3 lua-posix
-*/
+// sudo apt install lua5.3 lua-posix
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 
 int main(void)
 {
@@ -28,7 +26,7 @@ int main(void)
     }
     else if (pid == 0)
     {
-        puts("I'm, the child");
+        puts("I'm the child");
 
         close(fd[0]);
 
@@ -40,7 +38,7 @@ int main(void)
     }
     else
     {
-        puts("I'm, the parent");
+        puts("I'm the parent");
 
         close(fd[1]);
 
