@@ -1,7 +1,7 @@
-#include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <unistd.h>
 
 int main(int argc, char *argv[])
 {
@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     while ((len = read(fd, str, sizeof str)) != -1)
     {
         str[len] = '\0';
-        printf("parent says %s\n", str);
+        printf("Parent says %s\n", str);
         if (strcmp("quit", str) == 0)
         {
             puts("Bye!");
