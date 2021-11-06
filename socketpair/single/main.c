@@ -1,9 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 
 int main(void)
 {
@@ -25,7 +25,7 @@ int main(void)
     }
     else if (pid == 0)
     {
-        puts("I'm, the child");
+        puts("I'm the child");
 
         close(fd[0]);
 
@@ -34,7 +34,7 @@ int main(void)
         while ((len = read(fd[1], str, sizeof str)) != -1)
         {
             str[len] = '\0';
-            printf("parent says %s\n", str);
+            printf("Parent says %s\n", str);
             if (strcmp("quit", str) == 0)
             {
                 puts("Bye!");
@@ -50,7 +50,7 @@ int main(void)
     }
     else
     {
-        puts("I'm, the parent");
+        puts("I'm the parent");
 
         close(fd[1]);
 
