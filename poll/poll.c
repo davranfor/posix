@@ -7,7 +7,7 @@ int getkey()
 {
     int key = 0;
 
-    for (;;) // Loop until stdin is totally read
+    for (;;)
     {
         char c = 0;
         ssize_t size = read(STDIN_FILENO, &c, 1);
