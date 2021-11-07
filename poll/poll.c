@@ -5,31 +5,26 @@
 
 int getkey()
 {
-    char buf[128];
     int key = 0;
 
     for (;;) // Loop until stdin is totally read
     {
-        ssize_t size = read(STDIN_FILENO, buf, sizeof buf);
+        char c = 0;
+        ssize_t size = read(STDIN_FILENO, &c, 1);
 
         if (size == -1)
         {
             perror("read");
             exit(EXIT_FAILURE);
         }
-        if (size > 0)
+        if ((size == 0) || (c == '\n'))
         {
-            if (key == 0)
-            {
-                key = buf[0];
-            }
-            // Is there data pending to read in the buffer?
-            if ((size == sizeof buf) && (buf[size - 1] != '\n'))
-            {
-                continue; // Consume the rest of the buffer
-            }
+            break;
         }
-        break;
+        else if (key == 0)
+        {
+            key = c;
+        }
     }
     return key;
 }
