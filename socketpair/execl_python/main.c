@@ -1,5 +1,3 @@
-// sudo apt install lua5.3 lua-posix
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
