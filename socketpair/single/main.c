@@ -31,7 +31,7 @@ int main(void)
 
         ssize_t len = 0;
 
-        while ((len = read(fd[1], str, sizeof str)) != -1)
+        while ((len = read(fd[1], str, sizeof(str) - 1)) != -1)
         {
             str[len] = '\0';
             printf("Parent says %s\n", str);
