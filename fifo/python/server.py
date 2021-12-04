@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 
-import posix, sys, os
+import os, sys
 
 try:
-    server = posix.open("server.fifo", os.O_RDONLY)
-    client = posix.open("client.fifo", os.O_WRONLY)
+    server = os.open("server.fifo", os.O_RDONLY)
+    client = os.open("client.fifo", os.O_WRONLY)
 except Exception as err:
     raise SystemExit(err)
 
 while True:
-    data = posix.read(server, 128).decode()
+    data = os.read(server, 128).decode()
     if data == "":
-        posix.close(server)
-        posix.close(client)
+        os.close(server)
+        os.close(client)
         sys.exit()
     try:
-        data = eval(data)
-        data = str(data) + "\n"
+        data = str(eval(data)) + "\n"
     except Exception:
         data = "Please, type a valid expression\n"
-    posix.write(client, data.encode())
+    os.write(client, data.encode())
 
