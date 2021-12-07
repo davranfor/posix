@@ -4,23 +4,37 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-int main(void)
+static int server = -1;
+static int client = -1;
+
+static void die(const char *error)
 {
-    int server = open("server.fifo", O_WRONLY);
+    perror(error);
+    exit(EXIT_FAILURE);
+}
 
-    if (server == -1)
-    {
-        perror("fopen");
-        exit(EXIT_FAILURE);
-    }
-
-    int client = open("client.fifo", O_RDONLY);
-
-    if (client == -1)
+static void clean(void)
+{
+    if (server != -1)
     {
         close(server);
-        perror("fopen");
-        exit(EXIT_FAILURE);
+    }
+    if (client != -1)
+    {
+        close(client);
+    }
+}
+
+int main(void)
+{
+    atexit(clean);
+    if ((server = open("server.fifo", O_WRONLY)) == -1)
+    {
+        die("open server");
+    }
+    if ((client = open("client.fifo", O_RDONLY)) == -1)
+    {
+        die("open client");
     }
 
     char str[128] = {0};
@@ -34,8 +48,7 @@ int main(void)
         }
         if (write(server, str, strlen(str)) == -1)
         {
-            perror("write");
-            exit(EXIT_FAILURE);
+            die("write");
         }
 
         ssize_t len;
@@ -43,14 +56,11 @@ int main(void)
         len = read(client, str, sizeof(str) - 1);
         if (len == -1)
         {
-            perror("read");
-            exit(EXIT_FAILURE);
+            die("read");
         }
         str[len] = '\0';
         printf("%s", str);
     }
-    close(server);
-    close(client);
     return 0;
 }
 
