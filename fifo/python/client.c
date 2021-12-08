@@ -7,12 +7,6 @@
 static int server = -1;
 static int client = -1;
 
-static void die(const char *error)
-{
-    perror(error);
-    exit(EXIT_FAILURE);
-}
-
 static void clean(void)
 {
     if (server != -1)
@@ -25,9 +19,16 @@ static void clean(void)
     }
 }
 
+static void die(const char *error)
+{
+    perror(error);
+    exit(EXIT_FAILURE);
+}
+
 int main(void)
 {
     atexit(clean);
+
     if ((server = open("server.fifo", O_WRONLY)) == -1)
     {
         die("open server");
@@ -39,7 +40,7 @@ int main(void)
 
     char str[128] = {0};
 
-    puts("Please, type an expression e.g. 3*2 and press enter");
+    puts("Please, enter an expression (e.g. 3*2)");
     while (fgets(str, sizeof str, stdin))
     {
         if (strcmp(str, "quit\n") == 0)

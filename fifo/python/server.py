@@ -16,7 +16,8 @@ while True:
         sys.exit()
     try:
         data = str(eval(data)) + "\n"
-    except Exception:
-        data = "Please, type a valid expression\n"
-    os.write(client, data.encode())
+    except:
+        data = "Please, enter a valid expression\n"
+    finally:
+        os.write(client, data.encode())
 
