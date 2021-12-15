@@ -15,7 +15,7 @@ int main(void)
     result = regcomp(&regex, "^a[[:alnum:]]", 0);
     if (result != 0)
     {
-        perror("recomp");
+        perror("regcomp");
         exit(EXIT_FAILURE);
     }
     // Execute regular expression
@@ -33,7 +33,7 @@ int main(void)
         char msg[100];
 
         regerror(result, &regex, msg, sizeof(msg));
-        perror("regexp");
+        perror("regexec");
         exit(EXIT_FAILURE);
     }
     // Free regular expression
