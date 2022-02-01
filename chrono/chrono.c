@@ -54,7 +54,7 @@ static void chrono_run(struct chrono *chrono, int resume)
 {
     struct timespec start;
 
-    if (clock_gettime(CLOCK_REALTIME, &start) == -1)
+    if (clock_gettime(CLOCK_MONOTONIC, &start) == -1)
     {
         perror("clock_gettime");
         exit(EXIT_FAILURE);
@@ -96,7 +96,7 @@ long chrono_elapsed(const struct chrono *chrono)
     {
         return 0;
     }
-    if (clock_gettime(CLOCK_REALTIME, &now) == -1)
+    if (clock_gettime(CLOCK_MONOTONIC, &now) == -1)
     {
         perror("clock_gettime");
         exit(EXIT_FAILURE);
