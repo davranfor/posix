@@ -7,14 +7,14 @@
 int main(void)
 {
     int data = 0;
-    pid_t pid;
+    pid_t pid = fork();
 
-    if ((pid = fork()) == -1)
+    if (pid == -1)
     {
         perror("fork");
         exit(EXIT_FAILURE);
     }
-    else if (pid == 0)
+    if (pid == 0)
     {
         // start of child process
         printf("I'm the child\n");
@@ -33,10 +33,7 @@ int main(void)
             perror("wait");
             exit(EXIT_FAILURE);
         }
-        else
-        {
-            printf("I'm again the parent, the child has finished\n");
-        }
+        printf("I'm again the parent, the child has finished\n");
     }
     // Code executed from both the parent and the child
     printf("The %s process data is %d\n",
