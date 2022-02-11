@@ -9,13 +9,14 @@
 int main(void)
 {
     enum {N = 10};
-    int *data = mmap(
+    int *data;
+
+    data = mmap(
         NULL, N * sizeof *data,
         PROT_READ | PROT_WRITE,
         MAP_SHARED | MAP_ANONYMOUS,
         0, 0
     );    
-
     if (data == MAP_FAILED)
     {
         perror("mmap");
