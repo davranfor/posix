@@ -6,10 +6,9 @@
 #include <sys/wait.h>
 #include <sys/mman.h>
 
-#define N 5
-
 int main(void)
 {
+    enum {N = 10};
     int *data = mmap(
         NULL, N * sizeof *data,
         PROT_READ | PROT_WRITE,
