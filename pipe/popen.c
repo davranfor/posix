@@ -1,8 +1,7 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
-
-FILE *popen(const char *, const char *);
-int pclose(FILE *);
 
 int main(void)
 {
