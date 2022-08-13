@@ -1,91 +1,66 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
-#include <pthread.h>
 #include <unistd.h>
+#include <pthread.h>
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
-#define ARRAY_MAX 100
+static int done = 0;
 
-static int array[ARRAY_MAX];
-static int count = 1;
-
-void *producer(void *args)
+void *handler(void *args)
 {
     (void)args;
-
-    while (1)
+    puts("thread doing stuff ...");
+    if (pthread_mutex_lock(&mutex) != 0)
     {
-        int index = rand() % ARRAY_MAX;
-
-        if (pthread_mutex_lock(&mutex) != 0)
-        {
-            perror("pthread_mutex_lock");
-            exit(EXIT_FAILURE);
-        }
-        array[count++] = index;
+        perror("pthread_mutex_lock"); 
+        exit(EXIT_FAILURE);
+    }
+    while (!done)
+    {
         if (pthread_cond_wait(&cond, &mutex) != 0)
         {
             perror("pthread_cond_wait");
             exit(EXIT_FAILURE);
         }
-        if (pthread_mutex_unlock(&mutex) != 0)
-        {
-            perror("pthread_mutex_unlock");
-            exit(EXIT_FAILURE);
-        }
     }
-}
-
-void *consumer(void *args)
-{
-    (void)args;
-    while (1)
+    if (pthread_mutex_unlock(&mutex) != 0)
     {
-        if (pthread_mutex_lock(&mutex) != 0)
-        {
-            perror("pthread_mutex_lock");
-            exit(EXIT_FAILURE);
-        }
-        printf("%d\n", array[--count]);
-        if (pthread_cond_signal(&cond) != 0)
-        {
-            perror("pthread_cond_signal");
-            exit(EXIT_FAILURE);
-        }
-        if (pthread_mutex_unlock(&mutex) != 0)
-        {
-            perror("pthread_mutex_unlock");
-            exit(EXIT_FAILURE);
-        }
-        sleep(1);
+        perror("pthread_mutex_unlock");
+        exit(EXIT_FAILURE);
     }
+    puts("thread doing more stuff ...");
+    return NULL;
 }
 
 int main(void)
 {
-    srand((unsigned)time(NULL));
+    pthread_t thread;
 
-    pthread_t th1, th2;
-
-    if (pthread_create(&th1, NULL, &producer, NULL) != 0)
+    if (pthread_create(&thread, NULL, handler, NULL) != 0)
     {
         perror("pthread_create");
         exit(EXIT_FAILURE);
     }
-    if (pthread_create(&th2, NULL, &consumer, NULL) != 0)
+    if (pthread_mutex_lock(&mutex) != 0)
     {
-        perror("pthread_create");
+        perror("pthread_mutex_lock");
         exit(EXIT_FAILURE);
     }
-    if (pthread_join(th1, NULL) != 0)
+    sleep(1);
+    done = 1;
+    if (pthread_cond_signal(&cond) != 0)
     {
-        perror("pthread_join");
+        perror("pthread_cond_signal");
         exit(EXIT_FAILURE);
     }
-    if (pthread_join(th2, NULL) != 0)
+    if (pthread_mutex_unlock(&mutex) != 0)
+    {
+        perror("pthread_mutex_unlock");
+        exit(EXIT_FAILURE);
+    }
+    if (pthread_join(thread, NULL) != 0)
     {
         perror("pthread_join");
         exit(EXIT_FAILURE);
