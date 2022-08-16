@@ -15,7 +15,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    char str[128] = {0};
+    char str[128];
     int pid;
 
     if ((pid = fork()) == -1)
@@ -29,9 +29,9 @@ int main(void)
 
         close(fd[0]);
 
-        ssize_t len = 0;
+        ssize_t len;
 
-        while ((len = read(fd[1], str, sizeof(str) - 1)) != -1)
+        while ((len = read(fd[1], str, sizeof str)) != -1)
         {
             str[len] = '\0';
             printf("Parent says %s\n", str);
