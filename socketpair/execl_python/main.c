@@ -42,7 +42,7 @@ int main(void)
 
         char *words[] = {"one", "two", "three", "quit"};
         char **word = words;
-        char buf[128] = {0};
+        char str[128] = {0};
 
         for (;;)
         {
@@ -52,7 +52,7 @@ int main(void)
                 exit(EXIT_FAILURE);
             }
 
-            ssize_t len = read(fd[0], buf, sizeof(buf) - 1);
+            ssize_t len = read(fd[0], str, sizeof str);
 
             if (len == -1)
             {
@@ -63,8 +63,8 @@ int main(void)
             {
                 break;
             }
-            buf[len] = '\0';
-            printf("child says '%s'\n", buf);
+            str[len] = '\0';
+            printf("child says '%s'\n", str);
             word++;
         }
     }
