@@ -38,9 +38,9 @@ int main(void)
         die("open client");
     }
 
-    char str[128] = {0};
+    char str[128];
 
-    puts("Please, enter an expression (e.g. 3*2)");
+    puts("Please, enter an expression (e.g. 3*2) or 'quit' to exit");
     while (fgets(str, sizeof str, stdin))
     {
         if (strcmp(str, "quit\n") == 0)
@@ -54,8 +54,7 @@ int main(void)
 
         ssize_t len;
 
-        len = read(client, str, sizeof(str) - 1);
-        if (len == -1)
+        if ((len = read(client, str, sizeof str)) == -1)
         {
             die("read");
         }
