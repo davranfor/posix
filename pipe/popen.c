@@ -5,7 +5,6 @@
 
 int main(void)
 {
-    char result[1024];
     FILE *cmd;
 
     cmd = popen("ls -l", "r");
@@ -14,9 +13,12 @@ int main(void)
         perror("popen");
         exit(EXIT_FAILURE);
     }
-    while (fgets(result, sizeof(result), cmd))
+
+    char str[1024];
+
+    while (fgets(str, sizeof str, cmd))
     {
-        printf("output: %s", result);
+        printf("output: %s", str);
     }
     pclose(cmd);
     return 0;
