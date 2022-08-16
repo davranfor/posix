@@ -15,7 +15,7 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    char str[128] = {0};
+    char str[128];
 
     while (fgets(str, sizeof str, stdin))
     {
@@ -29,11 +29,7 @@ int main(void)
             break;
         }
     }
-    if (close(fd) == -1)
-    {
-        perror("close");
-        exit(EXIT_FAILURE);
-    }
+    close(fd);
     return 0;
 }
 

@@ -29,13 +29,12 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    char str[128] = {0};
-
     while (1)
     {
+        char str[128];
         ssize_t len;
 
-        if ((len = read(fd, str, sizeof(str) - 1)) == -1)
+        if ((len = read(fd, str, sizeof str)) == -1)
         {
             perror("read");
             exit(EXIT_FAILURE);
@@ -47,11 +46,7 @@ int main(void)
             break;
         }
     }
-    if (close(fd) == -1)
-    {
-        perror("close");
-        exit(EXIT_FAILURE);
-    }
+    close(fd);
     return 0;
 }
 
