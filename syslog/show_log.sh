@@ -12,7 +12,7 @@ log=$(zenity \
     --height=480 \
     --title="Logs" \
     --column="ProgramName" \
-    $lines 2> /dev/null)
+    $lines 2>/dev/null)
 
 # If the dialog was not canceled
 if [ $? -eq 0 ]; then
