@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Select lines where column 5 contains the word 'ProgramName'
-lines=$(awk '$5 ~ /ProgramName/' /var/log/syslog)
+lines=$(journalctl -q -t "ProgramName")
 
 # File separator = line break
 IFS=$'\n'

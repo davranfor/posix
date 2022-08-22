@@ -1,3 +1,11 @@
+/*
+# To see full logs of ProgramName in bash
+# With boot information
+journalctl -t "ProgramName"
+# Without boot information
+journalctl -q -t "ProgramName"
+*/
+
 #include <syslog.h>
 #include <unistd.h> // getuid
 
