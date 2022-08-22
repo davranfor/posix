@@ -1,9 +1,12 @@
 /*
-# To see full logs of ProgramName in bash
+# To read entries of ProgramName in bash
 # With boot information
 journalctl -t "ProgramName"
 # Without boot information
 journalctl -q -t "ProgramName"
+-------------------------------------------------------
+# To write entries of ProgramName in bash
+logger -p 'user.info' -t "ProgramName" "Test from bash"
 */
 
 #include <syslog.h>
