@@ -52,7 +52,7 @@ int main(void)
                 exit(EXIT_FAILURE);
             }
 
-            ssize_t len = read(fd[0], str, sizeof str);
+            ssize_t len = read(fd[0], str, sizeof(str) - 1);
 
             if (len == -1)
             {
