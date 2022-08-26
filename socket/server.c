@@ -26,16 +26,16 @@ int main(void)
         perror("socket");
         exit(EXIT_FAILURE);
     }
-	if (bind(serverfd, (struct sockaddr *)&server, sizeof server) == -1)
+    if (bind(serverfd, (struct sockaddr *)&server, sizeof server) == -1)
     {
-		perror("bind");
+        perror("bind");
         exit(EXIT_FAILURE);
-	}
-	if (listen(serverfd, SERVER_LISTEN) == -1)
+    }
+    if (listen(serverfd, SERVER_LISTEN) == -1)
     {
-		perror("listen");
+        perror("listen");
         exit(EXIT_FAILURE);
-	}
+    }
 
     struct sockaddr_in client;
     socklen_t socklen = sizeof client;
