@@ -14,7 +14,7 @@ int main(void)
 {
     struct sockaddr_in server;
 
-	memset(&server, 0, sizeof server);
+    memset(&server, 0, sizeof server);
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(SERVER_PORT);
