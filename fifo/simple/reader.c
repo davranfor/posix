@@ -34,7 +34,7 @@ int main(void)
         char str[128];
         ssize_t len;
 
-        if ((len = read(fd, str, sizeof str)) == -1)
+        if ((len = read(fd, str, sizeof(str) - 1)) == -1)
         {
             perror("read");
             exit(EXIT_FAILURE);
