@@ -54,7 +54,7 @@ int main(void)
 
         ssize_t len;
 
-        if ((len = read(client, str, sizeof str)) == -1)
+        if ((len = read(client, str, sizeof(str) - 1)) == -1)
         {
             die("read");
         }
