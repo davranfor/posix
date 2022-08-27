@@ -38,7 +38,7 @@ static void *handler(void *arg)
         printf("Length = %05zd | Client says: %s\n", len, str);
     }
     pthread_exit(NULL);
-    return arg;
+    return NULL;
 }
 
 int main(void)
