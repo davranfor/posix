@@ -4,11 +4,42 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <pthread.h>
 #include <unistd.h>
 
 #define SERVER_PORT 8888
 #define SERVER_LISTEN 10
 #define CLIENT_BUFFER 1024
+
+static void *handler(void *arg)
+{
+    int clientfd = *(int *)arg;
+    char str[CLIENT_BUFFER];
+
+    while (1)
+    {
+        ssize_t len = recv(clientfd, str, sizeof(str) - 1, 0);
+
+        if (len == 0)
+        {
+            break;
+        }
+        if (len == -1)
+        {
+            perror("recv");
+            exit(EXIT_FAILURE);
+        }
+        str[len] = '\0';
+        if (send(clientfd, str, strlen(str), 0) == -1)
+        {
+            perror("send");
+            exit(EXIT_FAILURE);
+        }
+        printf("Length = %05zd | Client says: %s\n", len, str);
+    }
+    pthread_exit(NULL);
+    return arg;
+}
 
 int main(void)
 {
@@ -39,7 +70,6 @@ int main(void)
 
     struct sockaddr_in client;
     socklen_t socklen = sizeof client;
-    char str[CLIENT_BUFFER];
 
     while (1)
     {
@@ -51,28 +81,13 @@ int main(void)
             exit(EXIT_FAILURE);
         }
 
-        while (1)
-        {
-            ssize_t len = recv(clientfd, str, sizeof(str) - 1, 0);
+        pthread_t thread;
 
-            if (len == -1)
-            {
-                perror("recv");
-                exit(EXIT_FAILURE);
-            }
-            if (len == 0)
-            {
-                break;
-            }
-            str[len] = '\0';
-            if (send(clientfd, str, strlen(str), 0) == -1)
-            {
-                perror("send");
-                exit(EXIT_FAILURE);
-            }
-            printf("Length = %05zd | Client says: %s\n", len, str);
+        if (pthread_create(&thread, NULL, handler, &clientfd) != 0)
+        {
+            perror("pthread_create");
+            exit(EXIT_FAILURE);
         }
-        break;
     }
     close(serverfd);
     puts("Server exits");

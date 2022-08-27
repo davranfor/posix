@@ -10,6 +10,30 @@
 #define SERVER_PORT 8888
 #define CLIENT_BUFFER 1024
 
+static int handler(int serverfd, char *str, size_t size)
+{
+    if (send(serverfd, str, strlen(str), 0) == -1)
+    {
+        perror("send");
+        exit(EXIT_FAILURE);
+    }
+
+    ssize_t len = recv(serverfd, str, size - 1, 0);
+
+    if (len == 0)
+    {
+        return 0;
+    }
+    if (len == -1)
+    {
+        perror("recv");
+        exit(EXIT_FAILURE);
+    }
+    str[len] = '\0';
+    printf("Length = %05zd | Server says: %s\n", len, str);
+    return 1;
+}
+
 int main(void)
 {
     struct sockaddr_in server;
@@ -37,29 +61,13 @@ int main(void)
     while (fgets(str, sizeof str, stdin) != NULL)
     {
         str[strcspn(str, "\n")] = '\0';
-        if (str[0] == '\0')
+        if (str[0] != '\0')
         {
-            continue;
+            if (!handler(serverfd, str, sizeof str))
+            {
+                break;
+            }
         }
-        if (send(serverfd, str, strlen(str), 0) == -1)
-        {
-            perror("send");
-            exit(EXIT_FAILURE);
-        }
-
-        ssize_t len = recv(serverfd, str, sizeof(str) - 1, 0);
-
-        if (len == -1)
-        {
-            perror("recv");
-            exit(EXIT_FAILURE);
-        }
-        if (len == 0)
-        {
-            break;
-        }
-        str[len] = '\0';
-        printf("Length = %05zd | Server says: %s\n", len, str);
     }
     puts("Client exits");
     return 0;
