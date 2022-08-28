@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -13,7 +14,7 @@
 
 static void *handler(void *arg)
 {
-    int clientfd = *(int *)arg;
+    int clientfd = (int)(intptr_t)arg;
     char str[CLIENT_BUFFER];
 
     while (1)
@@ -35,9 +36,8 @@ static void *handler(void *arg)
             perror("send");
             exit(EXIT_FAILURE);
         }
-        printf("Length = %05zd | Client says: %s\n", len, str);
+        printf("Client: %d | Length = %05zd | Client says: %s\n", clientfd, len, str);
     }
-    pthread_exit(NULL);
     return NULL;
 }
 
@@ -68,6 +68,19 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
+    pthread_attr_t attr;
+
+    if (pthread_attr_init(&attr) != 0)
+    {
+        perror("pthread_attr_init");
+        exit(EXIT_FAILURE);
+    }
+    if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0)
+    {
+        perror("pthread_attr_setdetachstate");
+        exit(EXIT_FAILURE);
+    }
+
     struct sockaddr_in client;
     socklen_t socklen = sizeof client;
 
@@ -83,11 +96,16 @@ int main(void)
 
         pthread_t thread;
 
-        if (pthread_create(&thread, NULL, handler, &clientfd) != 0)
+        if (pthread_create(&thread, &attr, handler, (void *)(intptr_t)clientfd) != 0)
         {
             perror("pthread_create");
             exit(EXIT_FAILURE);
         }
+    }
+    if (pthread_attr_destroy(&attr) != 0)
+    {
+        perror("pthread_attr_destroy");
+        exit(EXIT_FAILURE);
     }
     close(serverfd);
     puts("Server exits");

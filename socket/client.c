@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #define SERVER_ADDR "127.0.0.1"
 #define SERVER_PORT 8888
@@ -69,6 +70,7 @@ int main(void)
             }
         }
     }
+    close(serverfd);
     puts("Client exits");
     return 0;
 }
