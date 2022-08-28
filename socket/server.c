@@ -38,6 +38,7 @@ static void *handler(void *arg)
         }
         printf("Client: %d | Length = %05zd | Client says: %s\n", clientfd, len, str);
     }
+    close(clientfd);
     return NULL;
 }
 
