@@ -6,20 +6,17 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include "shared.h"
 
-#define SERVER_ADDR "127.0.0.1"
-#define SERVER_PORT 8888
-#define CLIENT_BUFFER 1024
-
-static int handler(int serverfd, char *str, size_t size)
+static int handler(int serverfd, char *str)
 {
-    if (send(serverfd, str, strlen(str), 0) == -1)
+    if (sendall(serverfd, str) == -1)
     {
-        perror("send");
+        perror("sendall");
         exit(EXIT_FAILURE);
     }
 
-    ssize_t len = recv(serverfd, str, size - 1, 0);
+    ssize_t len = recvall(serverfd, str);
 
     if (len == 0)
     {
@@ -27,10 +24,9 @@ static int handler(int serverfd, char *str, size_t size)
     }
     if (len == -1)
     {
-        perror("recv");
+        perror("recvall");
         exit(EXIT_FAILURE);
     }
-    str[len] = '\0';
     printf("Length = %05zd | Server says: %s\n", len, str);
     return 1;
 }
@@ -57,14 +53,15 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    char str[CLIENT_BUFFER];
+    struct sockbuff buff;
+    char *str = sockbuff_init(&buff);
 
-    while (fgets(str, sizeof str, stdin) != NULL)
+    while (fgets(str, BUFFER_SIZE, stdin) != NULL)
     {
         str[strcspn(str, "\n")] = '\0';
         if (str[0] != '\0')
         {
-            if (!handler(serverfd, str, sizeof str))
+            if (!handler(serverfd, str))
             {
                 break;
             }

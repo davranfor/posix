@@ -7,19 +7,17 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <unistd.h>
-
-#define SERVER_PORT 8888
-#define SERVER_LISTEN 10
-#define CLIENT_BUFFER 1024
+#include "shared.h"
 
 static void *handler(void *arg)
 {
     int clientfd = (int)(intptr_t)arg;
-    char str[CLIENT_BUFFER];
+    struct sockbuff buff;
+    char *str = sockbuff_init(&buff);
 
     while (1)
     {
-        ssize_t len = recv(clientfd, str, sizeof(str) - 1, 0);
+        ssize_t len = recvall(clientfd, str);
 
         if (len == 0)
         {
@@ -27,16 +25,15 @@ static void *handler(void *arg)
         }
         if (len == -1)
         {
-            perror("recv");
-            exit(EXIT_FAILURE);
-        }
-        str[len] = '\0';
-        if (send(clientfd, str, strlen(str), 0) == -1)
-        {
-            perror("send");
+            perror("recvall");
             exit(EXIT_FAILURE);
         }
         printf("Client: %d | Length = %05zd | Client says: %s\n", clientfd, len, str);
+        if (sendall(clientfd, str) == -1)
+        {
+            perror("sendall");
+            exit(EXIT_FAILURE);
+        }
     }
     close(clientfd);
     return NULL;
