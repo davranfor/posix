@@ -44,19 +44,19 @@ ssize_t recvall(int sockfd, char *str)
     }
     len = ntohs(map);
 
-	ssize_t res = 0;
+    ssize_t res = 0;
 
-	while (res < len)
+    while (res < len)
     {
-		ssize_t bytes = recv(sockfd, str + res, (size_t)(len - res), 0);
+        ssize_t bytes = recv(sockfd, str + res, (size_t)(len - res), 0);
 
-		if (bytes < 1)
+        if (bytes < 1)
         {
-		    return bytes;
-		}
-		res += bytes;
-	}
-	str[res] = '\0';
+            return bytes;
+        }
+        res += bytes;
+    }
+    str[res] = '\0';
     return res;
 }
 
