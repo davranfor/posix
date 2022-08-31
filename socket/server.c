@@ -88,13 +88,9 @@ int main(void)
         perror("pthread_attr_setdetachstate");
         exit(EXIT_FAILURE);
     }
-
-    struct sockaddr_in client;
-    socklen_t socklen = sizeof client;
-
     while (1)
     {
-        int clientfd = accept(serverfd, (struct sockaddr *)&client, &socklen);
+        intptr_t clientfd = accept(serverfd, NULL, NULL);
 
         if (clientfd == -1)
         {
@@ -104,7 +100,7 @@ int main(void)
 
         pthread_t thread;
 
-        if (pthread_create(&thread, &attr, handler, (void *)(intptr_t)clientfd) != 0)
+        if (pthread_create(&thread, &attr, handler, (void *)clientfd) != 0)
         {
             perror("pthread_create");
             exit(EXIT_FAILURE);
