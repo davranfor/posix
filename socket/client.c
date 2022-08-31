@@ -10,22 +10,27 @@
 
 static int handler(int serverfd, char *str)
 {
-    if (sendstr(serverfd, str) == -1)
+    ssize_t size;
+
+    size = sendstr(serverfd, str);
+    if (size == -1)
     {
         perror("sendstr");
-        exit(EXIT_FAILURE);
+        return 0;
     }
-
-    ssize_t size = recvstr(serverfd, str);
-
     if (size == 0)
     {
         return 0;
     }
+    size = recvstr(serverfd, str);
     if (size == -1)
     {
         perror("recvstr");
-        exit(EXIT_FAILURE);
+        return 0;
+    }
+    if (size == 0)
+    {
+        return 0;
     }
     printf("Size = %05zd | Server says: %s\n", size, str);
     return 1;

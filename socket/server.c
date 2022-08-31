@@ -16,22 +16,28 @@ static void *handler(void *arg)
 
     while (1)
     {
-        ssize_t size = recvstr(clientfd, str);
+        ssize_t size;
 
+        size = recvstr(clientfd, str);
+        if (size == -1)
+        {
+            perror("recvstr");
+            break;
+        }
         if (size == 0)
         {
             break;
         }
+        printf("Client: %d | Size = %05zd | Client says: %s\n", clientfd, size, str);
+        size = sendstr(clientfd, str);
         if (size == -1)
         {
-            perror("recvstr");
-            exit(EXIT_FAILURE);
-        }
-        printf("Client: %d | Size = %05zd | Client says: %s\n", clientfd, size, str);
-        if (sendstr(clientfd, str) == -1)
-        {
             perror("sendstr");
-            exit(EXIT_FAILURE);
+            break;
+        }
+        if (size == 0)
+        {
+            break;
         }
     }
     close(clientfd);
@@ -47,11 +53,16 @@ int main(void)
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(SERVER_PORT);
 
-    int serverfd;
+    int serverfd, yes = 1;
 
     if ((serverfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         perror("socket");
+        exit(EXIT_FAILURE);
+    }
+    if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1)
+    {
+        perror("setsockopt");
         exit(EXIT_FAILURE);
     }
     if (bind(serverfd, (struct sockaddr *)&server, sizeof server) == -1)
@@ -88,7 +99,7 @@ int main(void)
         if (clientfd == -1)
         {
             perror("accept");
-            exit(EXIT_FAILURE);
+            break;
         }
 
         pthread_t thread;
