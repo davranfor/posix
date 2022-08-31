@@ -10,13 +10,13 @@
 
 static int handler(int serverfd, char *str)
 {
-    if (sendall(serverfd, str) == -1)
+    if (sendstr(serverfd, str) == -1)
     {
-        perror("sendall");
+        perror("sendstr");
         exit(EXIT_FAILURE);
     }
 
-    ssize_t len = recvall(serverfd, str);
+    ssize_t len = recvstr(serverfd, str);
 
     if (len == 0)
     {
@@ -24,7 +24,7 @@ static int handler(int serverfd, char *str)
     }
     if (len == -1)
     {
-        perror("recvall");
+        perror("recvstr");
         exit(EXIT_FAILURE);
     }
     printf("Length = %05zd | Server says: %s\n", len, str);
@@ -53,10 +53,9 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    struct sockbuff buff;
-    char *str = sockbuff_init(&buff);
+    char str[BUFFER_SIZE];
 
-    while (fgets(str, BUFFER_SIZE, stdin) != NULL)
+    while (fgets(str, sizeof str, stdin) != NULL)
     {
         str[strcspn(str, "\n")] = '\0';
         if (str[0] != '\0')

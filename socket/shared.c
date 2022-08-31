@@ -3,60 +3,70 @@
 #include <arpa/inet.h>
 #include "shared.h"
 
-char *sockbuff_init(struct sockbuff *buff)
+ssize_t sendall(int sockfd, const void *buf, size_t size)
 {
-    memset(buff, 0, sizeof *buff);
-    return buff->data + 2;
-}
+    size_t sent = 0;
 
-ssize_t sendall(int sockfd, char *str)
-{
-    ssize_t res = (ssize_t)strlen(str);
-    uint16_t map = htons((uint16_t)res);
-
-    str -= 2;
-    memcpy(str, &map, 2);
-
-    ssize_t len = res + 2;
-
-    while (len > 0)
+    while (sent < size)
     {
-        ssize_t bytes = send(sockfd, str, (size_t)len, 0);
+        ssize_t bytes = send(sockfd, ((const unsigned char *)buf) + sent, size - sent, 0);
 
         if (bytes < 1)
         {
             return bytes;
         }
-        str += bytes;
-        len -= bytes;
+        sent += (size_t)bytes;
     }
-    return res;
+    return (ssize_t)sent;
 }
 
-ssize_t recvall(int sockfd, char *str)
+ssize_t recvall(int sockfd, void *buf, size_t size)
 {
+    size_t rcvd = 0;
+
+    while (rcvd < size)
+    {
+        ssize_t bytes = recv(sockfd, ((unsigned char *)buf) + rcvd, size - rcvd, 0);
+
+        if (bytes < 1)
+        {
+            return bytes;
+        }
+        rcvd += (size_t)bytes;
+    }
+    return (ssize_t)rcvd;
+}
+
+ssize_t sendstr(int sockfd, const char *str)
+{
+    size_t size = strlen(str) + 1;
+    uint16_t map = htons((uint16_t)size);
+    ssize_t bytes;
+
+    bytes = sendall(sockfd, &map, sizeof map);
+    if (bytes != sizeof map)
+    {
+        return bytes;
+    }
+    return sendall(sockfd, str, size);
+}
+
+ssize_t recvstr(int sockfd, char *str)
+{
+    ssize_t bytes;
     uint16_t map;
-    ssize_t len;
 
-    if ((len = recv(sockfd, &map, sizeof map, 0)) != sizeof map)
+    bytes = recvall(sockfd, &map, sizeof map);
+    if (bytes != sizeof map)
     {
-        return len == -1 ? -1 : 0;
+        return bytes;
     }
-    len = ntohs(map);
-
-    ssize_t res = 0;
-
-    while (res < len)
+    map = ntohs(map);
+    bytes = recvall(sockfd, str, map);
+    if (bytes < 1)
     {
-        ssize_t bytes = recv(sockfd, str + res, (size_t)(len - res), 0);
-
-        if (bytes < 1)
-        {
-            return bytes;
-        }
-        res += bytes;
+        return bytes;
     }
-    str[res] = '\0';
-    return res;
+    return bytes - 1;
 }
 

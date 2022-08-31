@@ -12,12 +12,11 @@
 static void *handler(void *arg)
 {
     int clientfd = (int)(intptr_t)arg;
-    struct sockbuff buff;
-    char *str = sockbuff_init(&buff);
+    char str[BUFFER_SIZE];
 
     while (1)
     {
-        ssize_t len = recvall(clientfd, str);
+        ssize_t len = recvstr(clientfd, str);
 
         if (len == 0)
         {
@@ -25,13 +24,13 @@ static void *handler(void *arg)
         }
         if (len == -1)
         {
-            perror("recvall");
+            perror("recvstr");
             exit(EXIT_FAILURE);
         }
         printf("Client: %d | Length = %05zd | Client says: %s\n", clientfd, len, str);
-        if (sendall(clientfd, str) == -1)
+        if (sendstr(clientfd, str) == -1)
         {
-            perror("sendall");
+            perror("sendstr");
             exit(EXIT_FAILURE);
         }
     }

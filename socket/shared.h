@@ -7,14 +7,12 @@
 #define SERVER_PORT 8888
 #define SERVER_LISTEN 10
 
-#define BUFFER_SIZE 65534
-#define BUFFER_SIZE_MAP 2
+#define BUFFER_SIZE 65536
 
-struct sockbuff { char data[BUFFER_SIZE + BUFFER_SIZE_MAP]; };
-char *sockbuff_init(struct sockbuff *);
-
-ssize_t sendall(int, char *);
-ssize_t recvall(int, char *);
+ssize_t sendall(int, const void *, size_t);
+ssize_t recvall(int, void *, size_t);
+ssize_t sendstr(int, const char *);
+ssize_t recvstr(int, char *);
 
 #endif /* SHARED_H */
 
