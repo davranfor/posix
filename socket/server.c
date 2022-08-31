@@ -16,18 +16,18 @@ static void *handler(void *arg)
 
     while (1)
     {
-        ssize_t len = recvstr(clientfd, str);
+        ssize_t size = recvstr(clientfd, str);
 
-        if (len == 0)
+        if (size == 0)
         {
             break;
         }
-        if (len == -1)
+        if (size == -1)
         {
             perror("recvstr");
             exit(EXIT_FAILURE);
         }
-        printf("Client: %d | Length = %05zd | Client says: %s\n", clientfd, len, str);
+        printf("Client: %d | Size = %05zd | Client says: %s\n", clientfd, size, str);
         if (sendstr(clientfd, str) == -1)
         {
             perror("sendstr");

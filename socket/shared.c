@@ -61,12 +61,6 @@ ssize_t recvstr(int sockfd, char *str)
     {
         return bytes;
     }
-    map = ntohs(map);
-    bytes = recvall(sockfd, str, map);
-    if (bytes < 1)
-    {
-        return bytes;
-    }
-    return bytes - 1;
+    return recvall(sockfd, str, ntohs(map));
 }
 

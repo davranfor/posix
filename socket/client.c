@@ -16,18 +16,18 @@ static int handler(int serverfd, char *str)
         exit(EXIT_FAILURE);
     }
 
-    ssize_t len = recvstr(serverfd, str);
+    ssize_t size = recvstr(serverfd, str);
 
-    if (len == 0)
+    if (size == 0)
     {
         return 0;
     }
-    if (len == -1)
+    if (size == -1)
     {
         perror("recvstr");
         exit(EXIT_FAILURE);
     }
-    printf("Length = %05zd | Server says: %s\n", len, str);
+    printf("Size = %05zd | Server says: %s\n", size, str);
     return 1;
 }
 
@@ -58,12 +58,9 @@ int main(void)
     while (fgets(str, sizeof str, stdin) != NULL)
     {
         str[strcspn(str, "\n")] = '\0';
-        if (str[0] != '\0')
+        if (!handler(serverfd, str))
         {
-            if (!handler(serverfd, str))
-            {
-                break;
-            }
+            break;
         }
     }
     close(serverfd);
