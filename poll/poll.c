@@ -21,7 +21,7 @@ int getkey()
         {
             break;
         }
-        else if (key == 0)
+        if (key == 0)
         {
             key = c;
         }
@@ -34,11 +34,7 @@ int main(void)
     printf("I'm going to sleep for 5 seconds | Press any key and then enter\n");
     sleep(5);
 
-    struct pollfd pfd =
-    {
-        .fd = STDIN_FILENO,
-        .events = POLLIN
-    };
+    struct pollfd pfd = {.fd = STDIN_FILENO, .events = POLLIN};
 
     /**
      * poll()
