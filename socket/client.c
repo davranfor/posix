@@ -12,27 +12,23 @@ static int handler(int serverfd, char *str)
 {
     ssize_t size;
 
-    size = sendstr(serverfd, str);
-    if (size == -1)
+    if ((size = sendstr(serverfd, str)) <= 0)
     {
-        perror("sendstr");
+        if (size == -1)
+        {
+            perror("sendstr");
+        }
         return 0;
     }
-    if (size == 0)
+    if ((size = recvstr(serverfd, str)) <= 0)
     {
+        if (size == -1)
+        {
+            perror("recvstr");
+        }
         return 0;
     }
-    size = recvstr(serverfd, str);
-    if (size == -1)
-    {
-        perror("recvstr");
-        return 0;
-    }
-    if (size == 0)
-    {
-        return 0;
-    }
-    printf("Size = %05zd | Server says: %s\n", size, str);
+    printf("Size: %05zd | Server says: %s\n", size, str);
     return 1;
 }
 

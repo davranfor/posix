@@ -18,25 +18,21 @@ static void *handler(void *arg)
     {
         ssize_t size;
 
-        size = recvstr(clientfd, str);
-        if (size == -1)
+        if ((size = recvstr(clientfd, str)) <= 0)
         {
-            perror("recvstr");
+            if (size == -1)
+            {
+                perror("recvstr");
+            }
             break;
         }
-        if (size == 0)
+        printf("Client: %d | Size: %05zd | Client says: %s\n", clientfd, size, str);
+        if ((size = sendstr(clientfd, str)) <= 0)
         {
-            break;
-        }
-        printf("Client: %d | Size = %05zd | Client says: %s\n", clientfd, size, str);
-        size = sendstr(clientfd, str);
-        if (size == -1)
-        {
-            perror("sendstr");
-            break;
-        }
-        if (size == 0)
-        {
+            if (size == -1)
+            {
+                perror("sendstr");
+            }
             break;
         }
     }
