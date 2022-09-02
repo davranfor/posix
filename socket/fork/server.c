@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -98,6 +97,7 @@ int main(void)
             close(clientfd);
         }
     }
+    // Never reached
     close(serverfd);
     puts("Server exits");
     return 0;
