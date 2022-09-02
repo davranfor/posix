@@ -107,6 +107,7 @@ int main(void)
         perror("pthread_attr_destroy");
         exit(EXIT_FAILURE);
     }
+    // Never reached
     close(serverfd);
     puts("Server exits");
     return 0;
