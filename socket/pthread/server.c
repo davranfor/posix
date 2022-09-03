@@ -102,12 +102,12 @@ int main(void)
             exit(EXIT_FAILURE);
         }
     }
+    // Never reached
     if (pthread_attr_destroy(&attr) != 0)
     {
         perror("pthread_attr_destroy");
         exit(EXIT_FAILURE);
     }
-    // Never reached
     close(serverfd);
     puts("Server exits");
     return 0;
