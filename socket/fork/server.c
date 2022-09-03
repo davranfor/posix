@@ -89,7 +89,7 @@ int main(void)
             // Child
             close(serverfd);
             handler(clientfd);
-            exit(EXIT_SUCCESS);
+            _exit(EXIT_SUCCESS);
         }
         else
         {
