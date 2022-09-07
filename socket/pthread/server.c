@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include <unistd.h>
 #include "shared.h"
 
 static void *handler(void *arg)
