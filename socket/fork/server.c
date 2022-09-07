@@ -43,13 +43,13 @@ static void handler(int clientfd)
 
 static void sigchld_handler(int signum)
 {
-	(void)signum;
+    (void)signum;
 
-	// waitpid() might overwrite errno, so we save and restore it
-	int saved_errno = errno;
+    // waitpid() might overwrite errno, so we save and restore it
+    int saved_errno = errno;
 
-	while (waitpid(-1, NULL, WNOHANG) > 0);
-	errno = saved_errno;
+    while (waitpid(-1, NULL, WNOHANG) > 0);
+    errno = saved_errno;
 }
 
 int main(void)
