@@ -1,10 +1,15 @@
+#define _XOPEN_SOURCE 500
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
 #include "shared.h"
 
 static void handler(int clientfd)
@@ -36,8 +41,30 @@ static void handler(int clientfd)
     close(clientfd);
 }
 
+static void sigchld_handler(int signum)
+{
+	(void)signum;
+
+	// waitpid() might overwrite errno, so we save and restore it
+	int saved_errno = errno;
+
+	while (waitpid(-1, NULL, WNOHANG) > 0);
+	errno = saved_errno;
+}
+
 int main(void)
 {
+    struct sigaction sa;
+
+    sa.sa_handler = sigchld_handler; // reap all dead processes
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGCHLD, &sa, NULL) == -1)
+    {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+
     struct sockaddr_in server;
 
     memset(&server, 0, sizeof server);

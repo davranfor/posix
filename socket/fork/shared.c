@@ -41,9 +41,8 @@ ssize_t sendstr(int sockfd, const char *str)
 {
     size_t size = strlen(str) + 1;
     uint16_t map = htons((uint16_t)size);
-    ssize_t bytes;
+    ssize_t bytes = sendall(sockfd, &map, sizeof map);
 
-    bytes = sendall(sockfd, &map, sizeof map);
     if (bytes != sizeof map)
     {
         return bytes;
@@ -53,10 +52,9 @@ ssize_t sendstr(int sockfd, const char *str)
 
 ssize_t recvstr(int sockfd, char *str)
 {
-    ssize_t bytes;
-    uint16_t map;
+    uint16_t map = 0;
+    ssize_t bytes = recvall(sockfd, &map, sizeof map);
 
-    bytes = recvall(sockfd, &map, sizeof map);
     if (bytes != sizeof map)
     {
         return bytes;
