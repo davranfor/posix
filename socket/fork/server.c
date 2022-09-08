@@ -5,11 +5,12 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <sys/wait.h>
-#include <signal.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "shared.h"
 
 static void handler(int clientfd)
@@ -101,7 +102,7 @@ int main(void)
         if (clientfd == -1)
         {
             perror("accept");
-            break;
+            exit(EXIT_FAILURE);
         }
 
         pid_t pid = fork();
