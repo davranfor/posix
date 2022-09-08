@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <pthread.h>
 #include "shared.h"
 
@@ -91,7 +92,7 @@ int main(void)
         if (clientfd == -1)
         {
             perror("accept");
-            break;
+            exit(EXIT_FAILURE);
         }
 
         pthread_t thread;
