@@ -66,13 +66,13 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    enum {MAX_CLIENTS = 50};
+    enum {MAX_CLIENTS = SERVER_LISTEN};
     int clients[MAX_CLIENTS] = {0};
     fd_set set;
 
     while (1)
     {
-        // clear the socket set
+        // Clear the socket set
         FD_ZERO(&set);
         // Add server socket to set
         FD_SET(serverfd, &set);
@@ -89,11 +89,11 @@ int main(void)
             if (clientfd > 0)
             {
                 FD_SET(clientfd, &set);
-            }
-            // Get the highest file descriptor number
-            if (clientfd > maxfd)
-            {
-                maxfd = clientfd;
+                // Get the highest file descriptor number
+                if (clientfd > maxfd)
+                {
+                    maxfd = clientfd;
+                }
             }
         }
         // Wait for activity
