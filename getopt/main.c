@@ -98,14 +98,14 @@ int main(int argc, char *argv[])
     if (output != NULL)
     {
         file = fopen(output, "w");
-    }
-    if (file == NULL)
-    {
-        if (!silent)
+        if (file == NULL)
         {
-            perror("fopen");
+            if (!silent)
+            {
+                perror("fopen");
+            }
+            exit(EXIT_FAILURE);
         }
-        exit(EXIT_FAILURE);
     }
     if ((ntimes < 0) || (ntimes > 1000))
     {
