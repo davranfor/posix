@@ -1,6 +1,6 @@
 /*
-gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o echoto main.c
-./echoto "Some random text"
+gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o myecho main.c
+./myecho "Some random text"
 */
 
 #include <stdio.h>
@@ -9,24 +9,24 @@ gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o echoto main.c
 
 static void print_usage(const char *path)
 {
-    printf("usage: %s [fn] text\n", path);
+    printf("usage: %s [on] text\n", path);
     exit(EXIT_FAILURE);
 }
 
 static void print_help(void)
 {
-    printf("echoto [Version 1.0]\n");
+    printf("myecho [Version 1.0]\n");
     exit(EXIT_SUCCESS);
 }
 
 static void print_version(void)
 {
-    printf("echoto\n"
-            "  -f, --filename[=FILENAME]\tSave text to a file\n"
+    printf("myecho\n"
+            "  -o, --output[=FILENAME]\tSave text to a file\n"
             "  -n, --ntimes[=NTIMES]\t\tNumber of times to print\n"
             "  -s, --silent\t\t\tDon't show errors\n"
-            "  -v, --version\t\t\tShow the program version and exit\n"
-            "  -h, --help\t\t\tShow this text and exit\n"
+            "      --version\t\t\tShow the program version and exit\n"
+            "      --help\t\t\tShow this text and exit\n"
     );
     exit(EXIT_SUCCESS);
 }
@@ -41,7 +41,7 @@ static void echo(FILE *file, const char *text, int ntimes)
 
 int main(int argc, char *argv[])
 {
-    const char *filename = NULL;
+    const char *output = NULL;
     const char *text = NULL;
     int ntimes = 1;
     int silent = 0;
@@ -51,13 +51,13 @@ int main(int argc, char *argv[])
         { "version", no_argument, NULL, 'v' },
         { "help", no_argument, NULL, 'h' },
         { "silent", no_argument, NULL, 's' },
-        { "filename", required_argument, NULL, 'f' },
+        { "output", required_argument, NULL, 'o' },
         { "ntimes", required_argument, NULL, 'n' },
         { 0, 0, 0, 0 }
     };
     int opt = 0;
 
-    while ((opt = getopt_long(argc, argv, "-vhsf:n:", long_options, NULL)) != -1)
+    while ((opt = getopt_long(argc, argv, "-so:n:", long_options, NULL)) != -1)
     {
         switch (opt)
         {
@@ -75,8 +75,8 @@ int main(int argc, char *argv[])
             case 's':
                 silent = 1;
                 break;
-            case 'f':
-                filename = optarg;
+            case 'o':
+                output = optarg;
                 break;
             case 'n':
                 ntimes = atoi(optarg);
@@ -95,9 +95,9 @@ int main(int argc, char *argv[])
 
     FILE *file = stdout;
 
-    if (filename != NULL)
+    if (output != NULL)
     {
-        file = fopen(filename, "w");
+        file = fopen(output, "w");
     }
     if (file == NULL)
     {
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
         ntimes = 1;
     }
     echo(file, text, ntimes);
-    if (filename != NULL)
+    if (output != NULL)
     {
         fclose(file);
     }
