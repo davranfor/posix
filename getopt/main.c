@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
                 break;
             case '?':
             default:
-                // Set "opterr = 0;" before calling etopt_long to skip getopt errors
+                // Set "opterr = 0;" before calling getopt_long to skip getopt errors
                 print_usage(argv[0]);
                 break;
         }
