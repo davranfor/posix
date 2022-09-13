@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     {
         { "version", no_argument, NULL, 'v' },
         { "help", no_argument, NULL, 'h' },
-        { "silent", no_argument, &silent, 1 },
+        { "silent", no_argument, NULL, 's' },
         { "filename", required_argument, NULL, 'f' },
         { "ntimes", required_argument, NULL, 'n' },
         { 0, 0, 0, 0 }
