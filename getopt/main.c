@@ -13,17 +13,17 @@ static void print_usage(const char *path)
     exit(EXIT_FAILURE);
 }
 
-static void print_help(void)
+static void print_version(void)
 {
     printf("myecho [Version 1.0]\n");
     exit(EXIT_SUCCESS);
 }
 
-static void print_version(void)
+static void print_help(void)
 {
     printf("myecho\n"
             "  -o, --output[=FILENAME]\tSave text to a file\n"
-            "  -n, --ntimes[=NTIMES]\t\tNumber of times to print\n"
+            "  -n, --ntimes[=NTIMES]\t\tPrint text n times\n"
             "  -s, --silent\t\t\tDon't show errors\n"
             "      --version\t\t\tShow the program version and exit\n"
             "      --help\t\t\tShow this text and exit\n"
