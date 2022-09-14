@@ -1,6 +1,9 @@
 /*
 gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o myecho main.c
-./myecho "Some random text"
+# Examples:
+./myecho --output=output.txt "Hello world!"
+./myecho -n 5 "Hello world!"
+./myecho "Hello world!"
 */
 
 #include <stdio.h>
