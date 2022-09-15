@@ -28,7 +28,6 @@ int main(void)
         perror("open");
         exit(EXIT_FAILURE);
     }
-
     while (1)
     {
         char str[128];
