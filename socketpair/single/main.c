@@ -24,23 +24,26 @@ int main(void)
         perror("fork");
         exit(EXIT_FAILURE);
     }
-    else if (pid == 0)
+    if (pid == 0)
     {
         puts("I'm the child");
-
         close(fd[0]);
-
-        ssize_t len;
-
-        while ((len = read(fd[1], str, sizeof(str) - 1)) != -1)
+        for (;;)
         {
+            ssize_t len;
+
+            if ((len = read(fd[1], str, sizeof(str) - 1)) == -1)
+            {
+                perror("read");
+                _exit(EXIT_FAILURE);
+            }
             str[len] = '\0';
-            printf("Parent says %s\n", str);
+            printf("Parent sent %s\n", str);
             if (strcmp("quit", str) == 0)
             {
-                puts("Bye!");
-                close(fd[0]);
-                break;
+                close(fd[1]);
+                puts("Child says Bye!");
+                _exit(EXIT_SUCCESS);
             }
             if (write(fd[1], str, strlen(str)) == -1)
             {
@@ -52,11 +55,11 @@ int main(void)
     else
     {
         puts("I'm the parent");
-
         close(fd[1]);
 
         char *words[] = {"one", "two", "three", "quit"};
         char **word = words;
+        char str[128] = {0};
 
         for (;;)
         {
@@ -65,15 +68,22 @@ int main(void)
                 perror("write");
                 exit(EXIT_FAILURE);
             }
-            if (read(fd[0], str, sizeof str) <= 0)
+            switch (read(fd[0], str, sizeof str))
             {
-                break;
+                case -1:
+                    perror("read");
+                    exit(EXIT_FAILURE);
+                case 0:
+                    close(fd[0]);
+                    waitpid(pid, NULL, 0);
+                    puts("Parent says Bye!");
+                    exit(EXIT_SUCCESS);
+                default:
+                    break;
             }
             word++;
         }
-        waitpid(pid, NULL, 0);
     }
-    puts("Exit process");
     return 0;
 }
 
