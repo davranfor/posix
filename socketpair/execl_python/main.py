@@ -7,10 +7,11 @@ n = 128
 
 while True:
     buf = os.read(fd, n)
+    print("Parent sent " + buf.decode())
     if buf.decode() == "quit":
         os.close(fd)
+        print("Child says Bye!")
         sys.exit()
     else:
-        print("parent says '" + buf.decode() + "'")
         os.write(fd, buf)
 

@@ -23,10 +23,9 @@ int main(void)
         perror("fork");
         exit(EXIT_FAILURE);
     }
-    else if (pid == 0)
+    if (pid == 0)
     {
         puts("I'm the child");
-
         close(fd[0]);
 
         char arg[2];
@@ -38,7 +37,6 @@ int main(void)
     else
     {
         puts("I'm the parent");
-
         close(fd[1]);
 
         char *words[] = {"one", "two", "three", "quit"};
@@ -52,24 +50,21 @@ int main(void)
                 perror("write");
                 exit(EXIT_FAILURE);
             }
-
-            ssize_t len = read(fd[0], str, sizeof(str) - 1);
-
-            if (len == -1)
+            switch (read(fd[0], str, sizeof str))
             {
-                perror("read");
-                exit(EXIT_FAILURE);
+                case -1:
+                    perror("read");
+                    exit(EXIT_FAILURE);
+                case 0:
+                    close(fd[0]);
+                    waitpid(pid, NULL, 0);
+                    puts("Parent says Bye!");
+                    exit(EXIT_SUCCESS);
+                default:
+                    break;
             }
-            if (len == 0)
-            {
-                break;
-            }
-            str[len] = '\0';
-            printf("child says '%s'\n", str);
             word++;
         }
-        waitpid(pid, NULL, 0);
     }
-    return 0;
 }
 
