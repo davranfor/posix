@@ -63,10 +63,7 @@ int main(void)
         }
         printf("\n");
     }
-
-    int error = munmap(data, N * sizeof *data);
-
-    if (error != 0)
+    if (munmap(data, N * sizeof *data) != 0)
     {
         perror("munmap");
         exit(EXIT_FAILURE);
