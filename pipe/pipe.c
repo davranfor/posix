@@ -8,20 +8,17 @@
 int main(void)
 {
     int a[2], b[2];
+
+    if ((pipe(a) == -1) || (pipe(b) == -1))
+    {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
     char str[128];
     ssize_t len;
     pid_t pid;
 
-    if (pipe(a) == -1)
-    {
-        perror("pipe");
-        exit(EXIT_FAILURE);
-    }
-    if (pipe(b) == -1)
-    {
-        perror("pipe");
-        exit(EXIT_FAILURE);
-    }
     if ((pid = fork()) == -1)
     {
         perror("fork");
@@ -54,7 +51,8 @@ int main(void)
             write(STDOUT_FILENO, str, (size_t)len);
         }
         close(b[0]);
+        waitpid(pid, NULL, 0);
     }
-    waitpid(pid, NULL, 0);
+    return 0;
 }
 
