@@ -1,17 +1,17 @@
 CC = gcc
 CFLAGS = -std=c11 -pedantic -Wall -Wextra -W -Wmissing-prototypes -Wstrict-prototypes -Wconversion -Wshadow -Wcast-qual -Wnested-externs
 
-all: main parent child
+all: main writer reader
 
 main: main.c
 	$(CC) $(CFLAGS) main.c -o main
 
-parent: parent.c
-	$(CC) $(CFLAGS) parent.c -o parent
+writer: writer.c
+	$(CC) $(CFLAGS) writer.c -o writer
 
-child: child.c
-	$(CC) $(CFLAGS) child.c -o child
+reader: reader.c
+	$(CC) $(CFLAGS) reader.c -o reader
 
 clean:
-	rm -f main parent child
+	rm -f main writer reader
 
