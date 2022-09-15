@@ -9,13 +9,12 @@ while true do
     if line == nil then
         break
     end
+    io.write("Parent sent ", line, "\n")
     if line == "quit" then
         socket.close(fd)
+        io.write("Child says Bye!\n")
         break
     end
-    --local info = "parent says " .. line
-    --print(info)
-    io.write("parent says ", line, "\n")
     socket.write(fd, line)
 end
 
