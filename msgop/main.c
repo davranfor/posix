@@ -1,7 +1,10 @@
 /*
-gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o msg main.c -l mq
+gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o msg main.c
 # Examples:
-
+./msg "Hello world!"
+./msg --send "Bye bye world!"
+./msg --recv
+./msg -r
 */
 
 #define _POSIX_C_SOURCE 200809L // getline
@@ -14,8 +17,9 @@ gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o msg main.c -l 
 #include <sys/msg.h>
 #include <errno.h>
 
-#define MAX_SIZE 128
 #define KEY 1234
+#define FLAGS (IPC_CREAT | 0666)
+#define MAX_SIZE 128
 
 struct msgbuf
 {
@@ -25,7 +29,7 @@ struct msgbuf
 
 void msg_send(const char *msg)
 {
-    int id = msgget(KEY, IPC_CREAT | 0666);
+    int id = msgget(KEY, FLAGS);
 
     if (id == -1)
     {
@@ -46,7 +50,7 @@ void msg_send(const char *msg)
 
 void msg_recv(void)
 {
-    int id = msgget(KEY, IPC_CREAT | 0666);
+    int id = msgget(KEY, FLAGS);
 
     if (id == -1)
     {
@@ -81,12 +85,15 @@ void msg_getline(void)
         if (errno)
         {
             perror("getline");
+            exit(EXIT_FAILURE);
         }
-        exit(EXIT_FAILURE);
     }
-    msg[strcspn(msg, "\n")] = '\0';
-    msg_send(msg);
-    free(msg);
+    else
+    {
+        msg[strcspn(msg, "\n")] = '\0';
+        msg_send(msg);
+        free(msg);
+    }
 }
 
 static void print_usage(const char *path)
@@ -104,10 +111,10 @@ static void print_version(void)
 static void print_help(void)
 {
     printf("msg\n"
-            "  -s, --send[=TEXT]\tSave text to a file\n"
-            "  -r, --receive\t\tPrint text n times\n"
-            "      --version\t\t\tShow the program version and exit\n"
-            "      --help\t\t\tShow this text and exit\n"
+            "  -s, --send[=TEXT]\tSend a POSIX message\n"
+            "  -r, --recv\t\tReceive a POSIX message\n"
+            "      --version\t\tShow the program version and exit\n"
+            "      --help\t\tShow this text and exit\n"
     );
     exit(EXIT_SUCCESS);
 }
