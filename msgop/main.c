@@ -27,41 +27,40 @@ struct msgbuf
     char text[MAX_SIZE];
 };
 
-void msg_send(const char *msg)
+void msg_send(const char *text, long type)
 {
-    int id = msgget(KEY, FLAGS);
+    int qid = msgget(KEY, FLAGS);
 
-    if (id == -1)
+    if (qid == -1)
     {
         perror("msgget");
         exit(EXIT_FAILURE);
     }
 
-    struct msgbuf buf;
+    struct msgbuf msg;
 
-    buf.type = 1;
-    snprintf(buf.text, sizeof buf.text, "%s", msg);
-    if (msgsnd(id, &buf, sizeof buf.text, IPC_NOWAIT) == -1)
+    msg.type = type;
+    snprintf(msg.text, sizeof msg.text, "%s", text);
+    if (msgsnd(qid, &msg, sizeof msg.text, IPC_NOWAIT) == -1)
     {
         perror("msgsnd");
         exit(EXIT_FAILURE);
     }
 }
 
-void msg_recv(void)
+void msg_recv(long type)
 {
-    int id = msgget(KEY, FLAGS);
+    int qid = msgget(KEY, FLAGS);
 
-    if (id == -1)
+    if (qid == -1)
     {
         perror("msgget");
         exit(EXIT_FAILURE);
     }
 
-    struct msgbuf buf;
+    struct msgbuf msg;
 
-    buf.type = 1;
-    if (msgrcv(id, &buf, sizeof buf.text, buf.type, MSG_NOERROR | IPC_NOWAIT) == -1)
+    if (msgrcv(qid, &msg, sizeof msg.text, type, IPC_NOWAIT | MSG_NOERROR) == -1)
     {
         if (errno != ENOMSG)
         {
@@ -71,16 +70,16 @@ void msg_recv(void)
     }
     else
     {
-        puts(buf.text);
+        puts(msg.text);
     }
 }
 
-void msg_getline(void)
+void msg_getline(long type)
 {
-    char *msg = NULL;
+    char *text = NULL;
     size_t size = 0;
 
-    if (getline(&msg, &size, stdin) == -1)
+    if (getline(&text, &size, stdin) == -1)
     {
         if (errno)
         {
@@ -90,15 +89,15 @@ void msg_getline(void)
     }
     else
     {
-        msg[strcspn(msg, "\n")] = '\0';
-        msg_send(msg);
-        free(msg);
+        text[strcspn(text, "\n")] = '\0';
+        msg_send(text, type);
+        free(text);
     }
 }
 
 static void print_usage(const char *path)
 {
-    printf("usage: %s [srn] text\n", path);
+    printf("usage: %s [sr] text\n", path);
     exit(EXIT_FAILURE);
 }
 
@@ -111,6 +110,9 @@ static void print_version(void)
 static void print_help(void)
 {
     printf("msg\n"
+            "  -t  --type[=TYPE]\tType of the POSIX message (default = 1)\n"
+            "                   \t  0 = first message in the queue is read\n"
+            "                   \t> 0 = first message in the queue of type 'type' is read\n"
             "  -s, --send[=TEXT]\tSend a POSIX message\n"
             "  -r, --recv\t\tReceive a POSIX message\n"
             "      --version\t\tShow the program version and exit\n"
@@ -130,7 +132,9 @@ static void set_action(const char *path, int *action, int value)
 
 int main(int argc, char *argv[])
 {
-    const char *msg = NULL;
+    const char *text = NULL;
+    long type = 1;
+
     enum {SEND = 1, RECV};
     int action = 0;
 
@@ -144,7 +148,7 @@ int main(int argc, char *argv[])
     };
     int opt = 0;
 
-    while ((opt = getopt_long(argc, argv, "-s:rn", long_options, NULL)) != -1)
+    while ((opt = getopt_long(argc, argv, "-t:s:r", long_options, NULL)) != -1)
     {
         switch (opt)
         {
@@ -154,10 +158,13 @@ int main(int argc, char *argv[])
             case 'h':
                 print_help();
                 break;
+            case 't':
+                type = strtol(optarg, NULL, 10);
+                break;
             case 1:
             case 's':
                 set_action(argv[0], &action, SEND);
-                msg = optarg;
+                text = optarg;
                 break;
             case 'r':
                 set_action(argv[0], &action, RECV);
@@ -169,16 +176,26 @@ int main(int argc, char *argv[])
                 break;
         }
     }
+    if (type < 0)
+    {
+        fprintf(stderr, "Error: 'type' must be positive\n");
+        exit(EXIT_FAILURE);
+    }
+    if ((type == 0) && (action != RECV)) 
+    {
+        fprintf(stderr, "Error: 'send' requires a 'type' greater than 0\n");
+        exit(EXIT_FAILURE);
+    }
     switch (action)
     {
         case SEND:
-            msg_send(msg);
+            msg_send(text, type);
             break;
         case RECV:
-            msg_recv();
+            msg_recv(type);
             break;
         default:
-            msg_getline();
+            msg_getline(type);
             break;
     }
     return 0;
