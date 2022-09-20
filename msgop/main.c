@@ -27,7 +27,7 @@ struct msgbuf
     char text[MAX_SIZE];
 };
 
-void msg_send(const char *text, long type)
+void msg_send(long type, const char *text)
 {
     int qid = msgget(KEY, FLAGS);
 
@@ -90,7 +90,7 @@ void msg_getline(long type)
     else
     {
         text[strcspn(text, "\n")] = '\0';
-        msg_send(text, type);
+        msg_send(type, text);
         free(text);
     }
 }
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
     switch (action)
     {
         case SEND:
-            msg_send(text, type);
+            msg_send(type, text);
             break;
         case RECV:
             msg_recv(type);
