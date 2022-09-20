@@ -109,14 +109,15 @@ static void print_version(void)
 
 static void print_help(void)
 {
-    printf("msg\n"
-            "  -t  --type[=TYPE]\tType of the POSIX message (default = 1)\n"
-            "                   \t  0 = first message in the queue is read\n"
-            "                   \t> 0 = first message in the queue of type 'type' is read\n"
-            "  -s, --send[=TEXT]\tSend a POSIX message\n"
-            "  -r, --recv\t\tReceive a POSIX message\n"
-            "      --version\t\tShow the program version and exit\n"
-            "      --help\t\tShow this text and exit\n"
+    printf(
+        "msg\n"
+        "  -t  --type[=TYPE]\tType of the POSIX message (default = 1)\n"
+        "                   \t  0 = first message in the queue is read\n"
+        "                   \t> 0 = first message in the queue of type 'type' is read\n"
+        "  -s, --send[=TEXT]\tSend a POSIX message\n"
+        "  -r, --recv\t\tReceive a POSIX message\n"
+        "      --version\t\tShow the program version and exit\n"
+        "      --help\t\tShow this text and exit\n"
     );
     exit(EXIT_SUCCESS);
 }
@@ -142,6 +143,7 @@ int main(int argc, char *argv[])
     {
         { "version", no_argument, NULL, 'v' },
         { "help", no_argument, NULL, 'h' },
+        { "type", required_argument, NULL, 't' },
         { "send", required_argument, NULL, 's' },
         { "recv", no_argument, NULL, 'r' },
         { 0, 0, 0, 0 }
