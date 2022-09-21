@@ -1,10 +1,10 @@
 /*
 gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o msg main.c
 # Examples:
-./msg "Hello world!"
-./msg --send "Bye bye world!"
-./msg --recv
-./msg -r
+./msg -k 1234 "Hello world!"
+./msg --key=1234 --send "Bye bye world!"
+./msg --key=1234 --recv
+./msg --key=1234 -r
 */
 
 #define _POSIX_C_SOURCE 200809L // getline
@@ -17,7 +17,6 @@ gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o msg main.c
 #include <sys/msg.h>
 #include <errno.h>
 
-#define KEY 1234
 #define FLAGS (IPC_CREAT | 0666)
 #define MAX_SIZE 128
 
@@ -27,9 +26,9 @@ struct msgbuf
     char text[MAX_SIZE];
 };
 
-void msg_send(long type, const char *text)
+void msg_send(key_t key, long type, const char *text)
 {
-    int qid = msgget(KEY, FLAGS);
+    int qid = msgget(key, FLAGS);
 
     if (qid == -1)
     {
@@ -48,9 +47,9 @@ void msg_send(long type, const char *text)
     }
 }
 
-void msg_recv(long type)
+void msg_recv(key_t key, long type)
 {
-    int qid = msgget(KEY, FLAGS);
+    int qid = msgget(key, FLAGS);
 
     if (qid == -1)
     {
@@ -74,7 +73,7 @@ void msg_recv(long type)
     }
 }
 
-void msg_getline(long type)
+void msg_getline(key_t key, long type)
 {
     char *text = NULL;
     size_t size = 0;
@@ -90,7 +89,7 @@ void msg_getline(long type)
     else
     {
         text[strcspn(text, "\n")] = '\0';
-        msg_send(type, text);
+        msg_send(key, type, text);
         free(text);
     }
 }
@@ -110,7 +109,8 @@ static void print_version(void)
 static void print_help(void)
 {
     printf(
-        "msg\n"
+        "msg: send messages to, and receive messages from, a System V message queue.\n"
+        "  -k  --key[=KEY]  \tKey of the POSIX message (default = 0)\n"
         "  -t  --type[=TYPE]\tType of the POSIX message (default = 1)\n"
         "                   \t  0 = first message in the queue is read\n"
         "                   \t> 0 = first message in the queue of type 'type' is read\n"
@@ -133,8 +133,9 @@ static void set_action(const char *path, int *action, int value)
 
 int main(int argc, char *argv[])
 {
-    const char *text = NULL;
+    key_t key = 0;
     long type = 1;
+    const char *text = NULL;
 
     enum {SEND = 1, RECV};
     int action = 0;
@@ -143,6 +144,7 @@ int main(int argc, char *argv[])
     {
         { "version", no_argument, NULL, 'v' },
         { "help", no_argument, NULL, 'h' },
+        { "key", required_argument, NULL, 'k' },
         { "type", required_argument, NULL, 't' },
         { "send", required_argument, NULL, 's' },
         { "recv", no_argument, NULL, 'r' },
@@ -150,7 +152,7 @@ int main(int argc, char *argv[])
     };
     int opt = 0;
 
-    while ((opt = getopt_long(argc, argv, "-t:s:r", long_options, NULL)) != -1)
+    while ((opt = getopt_long(argc, argv, "-k:t:s:r", long_options, NULL)) != -1)
     {
         switch (opt)
         {
@@ -159,6 +161,9 @@ int main(int argc, char *argv[])
                 break;
             case 'h':
                 print_help();
+                break;
+            case 'k':
+                key = (key_t)strtol(optarg, NULL, 10);
                 break;
             case 't':
                 type = strtol(optarg, NULL, 10);
@@ -191,13 +196,13 @@ int main(int argc, char *argv[])
     switch (action)
     {
         case SEND:
-            msg_send(type, text);
+            msg_send(key, type, text);
             break;
         case RECV:
-            msg_recv(type);
+            msg_recv(key, type);
             break;
         default:
-            msg_getline(type);
+            msg_getline(key, type);
             break;
     }
     return 0;
