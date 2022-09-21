@@ -96,7 +96,7 @@ void msg_getline(key_t key, long type)
 
 static void print_usage(const char *path)
 {
-    printf("usage: %s [sr] text\n", path);
+    printf("usage: %s [TEXT]\n", path);
     exit(EXIT_FAILURE);
 }
 
@@ -109,12 +109,12 @@ static void print_version(void)
 static void print_help(void)
 {
     printf(
-        "msg: send messages to, and receive messages from, a System V message queue.\n"
-        "  -k  --key[=KEY]  \tKey of the message (default = 0)\n"
-        "  -t  --type[=TYPE]\tType of the message (default = 1)\n"
-        "                   \t  0 = first message in the queue is read\n"
-        "                   \t> 0 = first message in the queue of type 'type' is read\n"
-        "  -s, --send[=TEXT]\tSend a message\n"
+        "msg: send messages to, and receive messages from, a System V message queue.\n\n"
+        "  -k  --key=KEY  \tKey of the message (default = 0)\n"
+        "  -t  --type=TYPE\tType of the message (default = 1)\n"
+        "                 \t  0 = first message in the queue is read\n"
+        "                 \t> 0 = first message in the queue of type 'type' is read\n"
+        "  -s, --send=TEXT\tSend a message\n"
         "  -r, --recv\t\tReceive a message\n"
         "      --version\t\tShow the program version and exit\n"
         "      --help\t\tShow this text and exit\n"
