@@ -40,7 +40,7 @@ void msg_send(key_t key, long type, const char *text)
 
     msg.type = type;
     snprintf(msg.text, sizeof msg.text, "%s", text);
-    if (msgsnd(qid, &msg, strlen(msg.text) + 1, IPC_NOWAIT) == -1)
+    if (msgsnd(qid, &msg, sizeof msg.text, IPC_NOWAIT) == -1)
     {
         perror("msgsnd");
         exit(EXIT_FAILURE);
