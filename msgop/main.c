@@ -1,10 +1,10 @@
 /*
 gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o msg main.c
 # Examples:
-./msg "Hello world!"
-./msg --name="/myqueue" --send "Bye bye world!"
-./msg --recv
-./msg -r
+./msg -k 1234 "Hello world!"
+./msg --key=1234 --send "Bye bye world!"
+./msg --key=1234 --recv
+./msg --key=1234 -r
 */
 
 #define _POSIX_C_SOURCE 200809L // getline
@@ -13,84 +13,67 @@ gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o msg main.c
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include <mqueue.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 #include <errno.h>
 
+#define FLAGS (IPC_CREAT | 0666)
 #define MAX_SIZE 128
 
-static mqd_t msg_open(const char *name, int flags)
+struct msgbuf
 {
-    struct mq_attr attr;
+    long type;
+    char text[MAX_SIZE];
+};
 
-    // Specify message queue attributes
-    // mq_maxmsg must be less or equal than /proc/sys/fs/mqueue/msg_max
-    attr.mq_flags = flags;      // 0 = blocking read/write
-    attr.mq_maxmsg = 10;        // maximum number of messages allowed in queue
-    attr.mq_msgsize = MAX_SIZE; // messages are contents of string
-    attr.mq_curmsgs = 0;        // number of messages currently in queue
+static void msg_send(key_t key, long type, const char *text)
+{
+    int qid = msgget(key, FLAGS);
 
-    // attr.mq_flags is not consulted in mq_open, we need to pass the flags
-    mqd_t mq = mq_open(name, O_RDWR | O_CREAT | flags, S_IRUSR | S_IWUSR, &attr);
-
-    if (mq == -1)
+    if (qid == -1)
     {
-        perror("mq_open");
+        perror("msgget");
         exit(EXIT_FAILURE);
     }
-    return mq;
-}
 
-static void msg_send(const char *name, const char *text, unsigned prio)
-{
-    mqd_t mq = msg_open(name, 0);
-    size_t len = strlen(text);
+    struct msgbuf msg;
 
-    if (len >= MAX_SIZE)
+    msg.type = type;
+    snprintf(msg.text, sizeof msg.text, "%s", text);
+    if (msgsnd(qid, &msg, sizeof msg.text, IPC_NOWAIT) == -1)
     {
-        len = MAX_SIZE - 1;
-    }
-    if (mq_send(mq, text, len, prio) == -1)
-    {
-        perror("mq_send");
-        exit(EXIT_FAILURE);
-    }
-    if (mq_close(mq) == -1)
-    {
-        perror("mq_close");
+        perror("msgsnd");
         exit(EXIT_FAILURE);
     }
 }
 
-static void msg_recv(const char *name, int flags)
+static void msg_recv(key_t key, long type)
 {
-    mqd_t mq = msg_open(name, flags);
-    char text[MAX_SIZE] = {0};
-    ssize_t len = mq_receive(mq, text, MAX_SIZE, NULL);
+    int qid = msgget(key, FLAGS);
 
-    if (len == -1)
+    if (qid == -1)
     {
-        // EAGAIN: O_NONBLOCK was set in mq_open and the message queue is empty
-        int ok = (flags == O_NONBLOCK) && (errno == EAGAIN);
+        perror("msgget");
+        exit(EXIT_FAILURE);
+    }
 
-        if (!ok)
+    struct msgbuf msg;
+
+    if (msgrcv(qid, &msg, sizeof msg.text, type, IPC_NOWAIT | MSG_NOERROR) == -1)
+    {
+        if (errno != ENOMSG)
         {
-            perror("mq_receive");
+            perror("msgrcv");
             exit(EXIT_FAILURE);
         }
     }
     else
     {
-        text[len] = '\0';
-        printf("message: %s\n", text);
-    }
-    if (mq_close(mq) == -1)
-    {
-        perror("mq_close");
-        exit(EXIT_FAILURE);
+        puts(msg.text);
     }
 }
 
-static void msg_getline(const char *name, unsigned prio)
+static void msg_getline(key_t key, long type)
 {
     char *text = NULL;
     size_t size = 0;
@@ -106,24 +89,14 @@ static void msg_getline(const char *name, unsigned prio)
     else
     {
         text[strcspn(text, "\n")] = '\0';
-        msg_send(name, text, prio);
+        msg_send(key, type, text);
         free(text);
     }
 }
 
-static void msg_unlink(const char *name)
+static void print_usage(const char *path)
 {
-    // ENOENT: The named message queue does not exist
-    if ((mq_unlink(name) == -1) && (errno != ENOENT))
-    {
-        perror("mq_unlink");
-        exit(EXIT_FAILURE);
-    }
-}
-
-static void print_usage(const char *path, const char *opts)
-{
-    fprintf(stderr, "usage: %s [%s] [TEXT]\n", path, opts);
+    printf("usage: %s [TEXT]\n", path);
     exit(EXIT_FAILURE);
 }
 
@@ -136,54 +109,50 @@ static void print_version(void)
 static void print_help(void)
 {
     printf(
-        "msg: send messages to, and receive messages from, a POSIX message queue.\n\n"
-        "  -n  --name=NAME    \tName of the message queue (default = /myqueue)\n"
-        "  -p, --prio=PRIORITY\tPriority between 0 and 9 (default = 0)\n"
-        "  -s, --send=TEXT    \tSend a message\n"
-        "  -r, --recv         \tReceive a message\n"
-        "  -w, --wait         \tReceive a message in blocking mode\n"
-        "  -u, --unlink       \tUnlink/Delete a message queue\n"
-        "      --version      \tShow the program version and exit\n"
-        "      --help         \tShow this text and exit\n"
+        "msg: send messages to, and receive messages from, a System V message queue.\n\n"
+        "  -k  --key=KEY  \tKey of the message (default = 0)\n"
+        "  -t  --type=TYPE\tType of the message (default = 1)\n"
+        "                 \t  0 = first message in the queue is read\n"
+        "                 \t> 0 = first message in the queue of type 'type' is read\n"
+        "  -s, --send=TEXT\tSend a message\n"
+        "  -r, --recv     \tReceive a message\n"
+        "      --version  \tShow the program version and exit\n"
+        "      --help     \tShow this text and exit\n"
     );
     exit(EXIT_SUCCESS);
 }
 
-static void set_action(int *action, int value)
+static void set_action(const char *path, int *action, int value)
 {
     if (*action != 0)
     {
-        fprintf(stderr, "msg: An action is already set\n");
-        exit(EXIT_FAILURE);
+        print_usage(path);
     }
     *action = value;
 }
 
 int main(int argc, char *argv[])
 {
-    const char *opts = "-n:p:s:rwu";
-    const char *name = "/myqueue";
+    key_t key = 0;
+    long type = 1;
     const char *text = NULL;
-    unsigned prio = 0;
 
-    enum {SEND = 1, RECV, WAIT, UNLINK};
+    enum {SEND = 1, RECV};
     int action = 0;
 
     struct option long_options[] =
     {
         { "version", no_argument, NULL, 'v' },
         { "help", no_argument, NULL, 'h' },
-        { "name", required_argument, NULL, 'k' },
-        { "prio", required_argument, NULL, 'p' },
+        { "key", required_argument, NULL, 'k' },
+        { "type", required_argument, NULL, 't' },
         { "send", required_argument, NULL, 's' },
         { "recv", no_argument, NULL, 'r' },
-        { "wait", no_argument, NULL, 'w' },
-        { "unlink", no_argument, NULL, 'u' },
         { 0, 0, 0, 0 }
     };
     int opt = 0;
 
-    while ((opt = getopt_long(argc, argv, opts, long_options, NULL)) != -1)
+    while ((opt = getopt_long(argc, argv, "-k:t:s:r", long_options, NULL)) != -1)
     {
         switch (opt)
         {
@@ -193,59 +162,47 @@ int main(int argc, char *argv[])
             case 'h':
                 print_help();
                 break;
-            case 'n':
-                name = optarg;
-                if (name[0] != '/')
-                {
-                    fprintf(stderr, "msg: 'name' must start with /\n");
-                    exit(EXIT_FAILURE);
-                }
+            case 'k':
+                key = (key_t)strtol(optarg, NULL, 10);
                 break;
-            case 'p':
-                prio = (unsigned)atoi(optarg);
-                if (prio > 9)
-                {
-                    fprintf(stderr, "msg: 'prio' must be between 0 and 9\n");
-                    exit(EXIT_FAILURE);
-                }
+            case 't':
+                type = strtol(optarg, NULL, 10);
                 break;
             case 1:
             case 's':
-                set_action(&action, SEND);
+                set_action(argv[0], &action, SEND);
                 text = optarg;
                 break;
             case 'r':
-                set_action(&action, RECV);
-                break;
-            case 'w':
-                set_action(&action, WAIT);
-                break;
-            case 'u':
-                set_action(&action, UNLINK);
+                set_action(argv[0], &action, RECV);
                 break;
             case '?':
-                print_usage(argv[0], opts);
+                print_usage(argv[0]);
                 break;
             default:
                 break;
         }
     }
+    if (type < 0)
+    {
+        fprintf(stderr, "Error: 'type' must be positive\n");
+        exit(EXIT_FAILURE);
+    }
+    if ((type == 0) && (action != RECV)) 
+    {
+        fprintf(stderr, "Error: 'send' requires a 'type' greater than 0\n");
+        exit(EXIT_FAILURE);
+    }
     switch (action)
     {
         case SEND:
-            msg_send(name, text, prio);
+            msg_send(key, type, text);
             break;
         case RECV:
-            msg_recv(name, O_NONBLOCK);
-            break;
-        case WAIT:
-            msg_recv(name, 0);
-            break;
-        case UNLINK:
-            msg_unlink(name);
+            msg_recv(key, type);
             break;
         default:
-            msg_getline(name, prio);
+            msg_getline(key, type);
             break;
     }
     return 0;
