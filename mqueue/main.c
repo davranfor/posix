@@ -40,6 +40,15 @@ static mqd_t msg_open(const char *name, int flags)
     return mq;
 }
 
+static void msg_close(mqd_t mq)
+{
+    if (mq_close(mq) == -1)
+    {
+        perror("mq_close");
+        exit(EXIT_FAILURE);
+    }
+}
+
 static void msg_send(const char *name, const char *text, unsigned prio)
 {
     mqd_t mq = msg_open(name, 0);
@@ -54,11 +63,7 @@ static void msg_send(const char *name, const char *text, unsigned prio)
         perror("mq_send");
         exit(EXIT_FAILURE);
     }
-    if (mq_close(mq) == -1)
-    {
-        perror("mq_close");
-        exit(EXIT_FAILURE);
-    }
+    msg_close(mq);
 }
 
 static void msg_recv(const char *name, int flags)
@@ -83,11 +88,7 @@ static void msg_recv(const char *name, int flags)
         text[len] = '\0';
         printf("message: %s\n", text);
     }
-    if (mq_close(mq) == -1)
-    {
-        perror("mq_close");
-        exit(EXIT_FAILURE);
-    }
+    msg_close(mq);
 }
 
 static void msg_getline(const char *name, unsigned prio)
