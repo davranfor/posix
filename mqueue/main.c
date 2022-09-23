@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     {
         { "version", no_argument, NULL, 'v' },
         { "help", no_argument, NULL, 'h' },
-        { "name", required_argument, NULL, 'k' },
+        { "name", required_argument, NULL, 'n' },
         { "prio", required_argument, NULL, 'p' },
         { "send", required_argument, NULL, 's' },
         { "recv", no_argument, NULL, 'r' },
