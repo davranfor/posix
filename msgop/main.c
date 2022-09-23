@@ -26,7 +26,7 @@ struct msgbuf
     char text[MAX_SIZE];
 };
 
-void msg_send(key_t key, long type, const char *text)
+static void msg_send(key_t key, long type, const char *text)
 {
     int qid = msgget(key, FLAGS);
 
@@ -47,7 +47,7 @@ void msg_send(key_t key, long type, const char *text)
     }
 }
 
-void msg_recv(key_t key, long type)
+static void msg_recv(key_t key, long type)
 {
     int qid = msgget(key, FLAGS);
 
@@ -73,7 +73,7 @@ void msg_recv(key_t key, long type)
     }
 }
 
-void msg_getline(key_t key, long type)
+static void msg_getline(key_t key, long type)
 {
     char *text = NULL;
     size_t size = 0;
