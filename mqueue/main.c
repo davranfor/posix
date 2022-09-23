@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 'p':
-                prio = (unsigned)atoi(optarg);
+                prio = (unsigned)strtoul(optarg, NULL, 10);
                 if (prio > 9)
                 {
                     fprintf(stderr, "msg: 'prio' must be between 0 and 9\n");
