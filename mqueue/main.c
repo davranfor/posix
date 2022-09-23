@@ -18,25 +18,19 @@ gcc -std=c11 -Wpedantic -Wall -Wextra -Wconversion -Wcast-qual -o msg main.c
 
 #define MAX_SIZE 128
 
-static mqd_t msg_open(const char *name, int wait)
+static mqd_t msg_open(const char *name, int flags)
 {
     struct mq_attr attr;
 
     // Specify message queue attributes
     // mq_maxmsg must be less or equal than /proc/sys/fs/mqueue/msg_max
-    attr.mq_flags = wait ? 0 : O_NONBLOCK;  // 0 = blocking read/write
-    attr.mq_maxmsg = 10;                    // maximum number of messages allowed in queue
-    attr.mq_msgsize = MAX_SIZE;             // messages are contents of string
-    attr.mq_curmsgs = 0;                    // number of messages currently in queue
+    attr.mq_flags = flags;      // 0 = blocking read/write
+    attr.mq_maxmsg = 10;        // maximum number of messages allowed in queue
+    attr.mq_msgsize = MAX_SIZE; // messages are contents of string
+    attr.mq_curmsgs = 0;        // number of messages currently in queue
 
-    int flags = O_RDWR | O_CREAT;
-
-    if (!wait)
-    {
-        flags |= O_NONBLOCK; // attr.mq_flags is not consulted in mq_open
-    }
-
-    mqd_t mq = mq_open(name, flags, S_IRUSR | S_IWUSR, &attr);
+    // attr.mq_flags is not consulted in mq_open, we need to pass the flags
+    mqd_t mq = mq_open(name, O_RDWR | O_CREAT | flags, S_IRUSR | S_IWUSR, &attr);
 
     if (mq == -1)
     {
@@ -46,9 +40,9 @@ static mqd_t msg_open(const char *name, int wait)
     return mq;
 }
 
-static void msg_send(const char *name, const char *text, int wait)
+static void msg_send(const char *name, const char *text)
 {
-    mqd_t mq = msg_open(name, wait);
+    mqd_t mq = msg_open(name, 0);
     size_t len = strlen(text);
 
     if (len >= MAX_SIZE)
@@ -67,16 +61,16 @@ static void msg_send(const char *name, const char *text, int wait)
     }
 }
 
-static void msg_recv(const char *name, int wait)
+static void msg_recv(const char *name, int flags)
 {
-    mqd_t mq = msg_open(name, wait);
+    mqd_t mq = msg_open(name, flags);
     char text[MAX_SIZE] = {0};
     ssize_t len = mq_receive(mq, text, MAX_SIZE, NULL);
 
     if (len == -1)
     {
         // EAGAIN: O_NONBLOCK was set in mq_open and the message queue is empty
-        int ok = !wait && (errno == EAGAIN);
+        int ok = (flags == O_NONBLOCK) && (errno == EAGAIN);
 
         if (!ok)
         {
@@ -96,7 +90,7 @@ static void msg_recv(const char *name, int wait)
     }
 }
 
-static void msg_getline(const char *name, int wait)
+static void msg_getline(const char *name)
 {
     char *text = NULL;
     size_t size = 0;
@@ -112,7 +106,7 @@ static void msg_getline(const char *name, int wait)
     else
     {
         text[strcspn(text, "\n")] = '\0';
-        msg_send(name, text, wait);
+        msg_send(name, text);
         free(text);
     }
 }
@@ -146,7 +140,7 @@ static void print_help(void)
         "  -n  --name=NAME\tName of the message queue (default = /myqueue)\n"
         "  -s, --send=TEXT\tSend a message\n"
         "  -r, --recv     \tReceive a message\n"
-        "  -w, --wait     \tSet the queue in blocking mode\n"
+        "  -w, --wait     \tReceive a message in blocking mode\n"
         "  -u, --unlink   \tUnlink/Delete a message queue\n"
         "      --version  \tShow the program version and exit\n"
         "      --help     \tShow this text and exit\n"
@@ -167,9 +161,8 @@ int main(int argc, char *argv[])
 {
     const char *name = "/myqueue";
     const char *text = NULL;
-    int wait = 0;
 
-    enum {SEND = 1, RECV, UNLINK};
+    enum {SEND = 1, RECV, WAIT, UNLINK};
     int action = 0;
 
     struct option long_options[] =
@@ -207,7 +200,7 @@ int main(int argc, char *argv[])
                 set_action(argv[0], &action, RECV);
                 break;
             case 'w':
-                wait = 1;
+                set_action(argv[0], &action, WAIT);
                 break;
             case 'u':
                 set_action(argv[0], &action, UNLINK);
@@ -226,16 +219,19 @@ int main(int argc, char *argv[])
     switch (action)
     {
         case SEND:
-            msg_send(name, text, wait);
+            msg_send(name, text);
             break;
         case RECV:
-            msg_recv(name, wait);
+            msg_recv(name, O_NONBLOCK);
+            break;
+        case WAIT:
+            msg_recv(name, 0);
             break;
         case UNLINK:
             msg_unlink(name);
             break;
         default:
-            msg_getline(name, wait);
+            msg_getline(name);
             break;
     }
     return 0;
