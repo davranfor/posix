@@ -71,7 +71,6 @@ static void msg_recv(const char *name, int wait)
 {
     mqd_t mq = msg_open(name, wait);
     char text[MAX_SIZE] = {0};
-
     ssize_t len = mq_receive(mq, text, MAX_SIZE, NULL);
 
     if (len == -1)
