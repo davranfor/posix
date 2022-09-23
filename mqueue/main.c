@@ -40,7 +40,7 @@ static mqd_t msg_open(const char *name, int flags)
     return mq;
 }
 
-static void msg_send(const char *name, const char *text)
+static void msg_send(const char *name, const char *text, unsigned prio)
 {
     mqd_t mq = msg_open(name, 0);
     size_t len = strlen(text);
@@ -49,7 +49,7 @@ static void msg_send(const char *name, const char *text)
     {
         len = MAX_SIZE - 1;
     }
-    if (mq_send(mq, text, len, 0) == -1)
+    if (mq_send(mq, text, len, prio) == -1)
     {
         perror("mq_send");
         exit(EXIT_FAILURE);
@@ -90,7 +90,7 @@ static void msg_recv(const char *name, int flags)
     }
 }
 
-static void msg_getline(const char *name)
+static void msg_getline(const char *name, unsigned prio)
 {
     char *text = NULL;
     size_t size = 0;
@@ -106,7 +106,7 @@ static void msg_getline(const char *name)
     else
     {
         text[strcspn(text, "\n")] = '\0';
-        msg_send(name, text);
+        msg_send(name, text, prio);
         free(text);
     }
 }
@@ -121,9 +121,9 @@ static void msg_unlink(const char *name)
     }
 }
 
-static void print_usage(const char *path)
+static void print_usage(const char *path, const char *opts)
 {
-    printf("usage: %s [TEXT]\n", path);
+    fprintf(stderr, "usage: %s [%s] [TEXT]\n", path, opts);
     exit(EXIT_FAILURE);
 }
 
@@ -137,30 +137,34 @@ static void print_help(void)
 {
     printf(
         "msg: send messages to, and receive messages from, a POSIX message queue.\n\n"
-        "  -n  --name=NAME\tName of the message queue (default = /myqueue)\n"
-        "  -s, --send=TEXT\tSend a message\n"
-        "  -r, --recv     \tReceive a message\n"
-        "  -w, --wait     \tReceive a message in blocking mode\n"
-        "  -u, --unlink   \tUnlink/Delete a message queue\n"
-        "      --version  \tShow the program version and exit\n"
-        "      --help     \tShow this text and exit\n"
+        "  -n  --name=NAME    \tName of the message queue (default = /myqueue)\n"
+        "  -p, --prio=PRIORITY\tPriority between 0 and 9 (default = 0)\n"
+        "  -s, --send=TEXT    \tSend a message\n"
+        "  -r, --recv         \tReceive a message\n"
+        "  -w, --wait         \tReceive a message in blocking mode\n"
+        "  -u, --unlink       \tUnlink/Delete a message queue\n"
+        "      --version      \tShow the program version and exit\n"
+        "      --help         \tShow this text and exit\n"
     );
     exit(EXIT_SUCCESS);
 }
 
-static void set_action(const char *path, int *action, int value)
+static void set_action(int *action, int value)
 {
     if (*action != 0)
     {
-        print_usage(path);
+        fprintf(stderr, "msg: An action is already set\n");
+        exit(EXIT_FAILURE);
     }
     *action = value;
 }
 
 int main(int argc, char *argv[])
 {
+    const char *opts = "-n:p:s:rwu";
     const char *name = "/myqueue";
     const char *text = NULL;
+    unsigned prio = 0;
 
     enum {SEND = 1, RECV, WAIT, UNLINK};
     int action = 0;
@@ -170,6 +174,7 @@ int main(int argc, char *argv[])
         { "version", no_argument, NULL, 'v' },
         { "help", no_argument, NULL, 'h' },
         { "name", required_argument, NULL, 'k' },
+        { "prio", required_argument, NULL, 'p' },
         { "send", required_argument, NULL, 's' },
         { "recv", no_argument, NULL, 'r' },
         { "wait", no_argument, NULL, 'w' },
@@ -178,7 +183,7 @@ int main(int argc, char *argv[])
     };
     int opt = 0;
 
-    while ((opt = getopt_long(argc, argv, "-n:s:rwu", long_options, NULL)) != -1)
+    while ((opt = getopt_long(argc, argv, opts, long_options, NULL)) != -1)
     {
         switch (opt)
         {
@@ -190,36 +195,45 @@ int main(int argc, char *argv[])
                 break;
             case 'n':
                 name = optarg;
+                if (name[0] != '/')
+                {
+                    fprintf(stderr, "msg: 'name' must start with /\n");
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            case 'p':
+                prio = (unsigned)atoi(optarg);
+                if (prio > 9)
+                {
+                    fprintf(stderr, "msg: 'prio' must be between 0 and 9\n");
+                    exit(EXIT_FAILURE);
+                }
                 break;
             case 1:
             case 's':
-                set_action(argv[0], &action, SEND);
+                set_action(&action, SEND);
                 text = optarg;
                 break;
             case 'r':
-                set_action(argv[0], &action, RECV);
+                set_action(&action, RECV);
                 break;
             case 'w':
-                set_action(argv[0], &action, WAIT);
+                set_action(&action, WAIT);
                 break;
             case 'u':
-                set_action(argv[0], &action, UNLINK);
+                set_action(&action, UNLINK);
                 break;
             case '?':
-                print_usage(argv[0]);
+                print_usage(argv[0], opts);
                 break;
             default:
                 break;
         }
     }
-    if (name[0] != '/')
-    {
-        print_usage(argv[0]);
-    }
     switch (action)
     {
         case SEND:
-            msg_send(name, text);
+            msg_send(name, text, prio);
             break;
         case RECV:
             msg_recv(name, O_NONBLOCK);
@@ -231,7 +245,7 @@ int main(int argc, char *argv[])
             msg_unlink(name);
             break;
         default:
-            msg_getline(name);
+            msg_getline(name, prio);
             break;
     }
     return 0;
