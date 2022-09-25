@@ -127,7 +127,7 @@ static void msg_event(union sigval sig)
         exit(EXIT_FAILURE);
     }
     text[len] = '\0';
-    printf("message: %s\n", text);
+    puts(text);
     msg_close(mq);
     exit(EXIT_SUCCESS);
 }
