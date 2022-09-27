@@ -68,13 +68,12 @@ int main(void)
 
     enum {MAX_CLIENTS = SERVER_LISTEN + 1};
     struct pollfd fds[MAX_CLIENTS] = {0};
-    nfds_t clients = 0;
 
     fds[0].fd = serverfd;
     fds[0].events = POLLIN;
     while (1)
     {
-        int ready = poll(fds, clients + 1, -1);
+        int ready = poll(fds, MAX_CLIENTS, -1);
 
         if (ready == -1)
         {
@@ -98,21 +97,20 @@ int main(void)
                     {
                         fds[client].fd = clientfd;
                         fds[client].events = POLLIN;
-                        clients++;
                         break;
                     }
                 }
             }
             for (nfds_t client = 1; client < MAX_CLIENTS; client++)
             {
-                if ((fds[client].fd > 0) && (fds[client].revents & POLLIN))
+                if (fds[client].revents & POLLIN)
                 {
                     if (!handler(fds[client].fd))
                     {
+                        close(fds[client].fd);
                         fds[client].fd = 0;
                         fds[client].events = 0;
                         fds[client].revents = 0;
-                        clients--;
                     }
                 }
             }
