@@ -93,10 +93,10 @@ int main(void)
         }
         for (int iter = 0; iter < nevents; iter++)
         {
-            if (events[iter].data.fd == serverfd)
-            {
-                int clientfd;
+            int clientfd = events[iter].data.fd;
 
+            if (clientfd == serverfd)
+            {
                 if ((clientfd = accept(serverfd, NULL, NULL)) == -1)
                 {
                     perror("accept");
@@ -110,9 +110,14 @@ int main(void)
                     exit(EXIT_FAILURE);
                 }
             }
-            else if (!handler(events[iter].data.fd))
+            else if (!handler(clientfd))
             {
-                close(events[iter].data.fd);
+                if (epoll_ctl(epollfd, EPOLL_CTL_DEL, clientfd, &event) == -1)
+                {
+                    perror("epoll_ctl");
+                    exit(EXIT_FAILURE);
+                }
+                close(clientfd);
             }
         }
     }
