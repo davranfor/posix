@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/poll.h>
+#include <sys/epoll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "shared.h"
@@ -66,53 +66,58 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    enum {MAX_CLIENTS = SERVER_LISTEN + 1};
-    struct pollfd fds[MAX_CLIENTS] = {0};
+    enum {MAX_EVENTS = SERVER_LISTEN};
+    struct epoll_event event, events[MAX_EVENTS];
+    int epollfd;
 
-    fds[0].fd = serverfd;
-    fds[0].events = POLLIN;
+    if ((epollfd = epoll_create1(0)) == -1)
+    {
+        perror("epoll_create1");
+        exit(EXIT_FAILURE);
+    }
+    event.events = EPOLLIN;
+    event.data.fd = serverfd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serverfd, &event) == -1)
+    {
+        perror("epoll_ctl");
+        exit(EXIT_FAILURE);
+    }
     while (1)
     {
-        int ready = poll(fds, MAX_CLIENTS, -1);
+        int nevents;
 
-        if (ready == -1)
+        if ((nevents = epoll_wait(epollfd, events, MAX_EVENTS, -1)) == -1)
         {
-            perror("poll");
+            perror("epoll_wait");
             exit(EXIT_FAILURE);
         }
-        if (ready > 0)
+        for (int iter = 0; iter < nevents; iter++)
         {
-            if (fds[0].revents & POLLIN)
-            {
-                int clientfd;
+            int clientfd = events[iter].data.fd;
 
+            if (clientfd == serverfd)
+            {
                 if ((clientfd = accept(serverfd, NULL, NULL)) == -1)
                 {
                     perror("accept");
                     exit(EXIT_FAILURE);
                 }
-                for (nfds_t client = 1; client < MAX_CLIENTS; client++)
+                event.events = EPOLLIN | EPOLLET;
+                event.data.fd = clientfd;
+                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &event) == -1)
                 {
-                    if (fds[client].fd == 0)
-                    {
-                        fds[client].fd = clientfd;
-                        fds[client].events = POLLIN;
-                        break;
-                    }
+                    perror("epoll_ctl");
+                    exit(EXIT_FAILURE);
                 }
             }
-            for (nfds_t client = 1; client < MAX_CLIENTS; client++)
+            else if (!handler(clientfd))
             {
-                if (fds[client].revents & POLLIN)
+                if (epoll_ctl(epollfd, EPOLL_CTL_DEL, clientfd, &event) == -1)
                 {
-                    if (!handler(fds[client].fd))
-                    {
-                        close(fds[client].fd);
-                        fds[client].fd = 0;
-                        fds[client].events = 0;
-                        fds[client].revents = 0;
-                    }
+                    perror("epoll_ctl");
+                    exit(EXIT_FAILURE);
                 }
+                close(clientfd);
             }
         }
     }
