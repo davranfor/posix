@@ -102,7 +102,7 @@ int main(void)
                     perror("accept");
                     exit(EXIT_FAILURE);
                 }
-                event.events = EPOLLIN | EPOLLET;
+                event.events = EPOLLIN;
                 event.data.fd = clientfd;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &event) == -1)
                 {
