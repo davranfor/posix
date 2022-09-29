@@ -9,12 +9,12 @@
 #include <arpa/inet.h>
 #include "shared.h"
 
-static ssize_t handler(int clientfd)
+static ssize_t handler(int fd)
 {
     char str[BUFFER_SIZE];
     ssize_t size;
 
-    if ((size = recvstr(clientfd, str)) <= 0)
+    if ((size = recvstr(fd, str)) <= 0)
     {
         if (size == -1)
         {
@@ -22,8 +22,8 @@ static ssize_t handler(int clientfd)
         }
         return 0;
     }
-    printf("Client: %d | Size: %05zd | Client says: %s\n", clientfd, size, str);
-    if ((size = sendstr(clientfd, str)) <= 0)
+    printf("Client: %d | Size: %05zd | Client says: %s\n", fd, size, str);
+    if ((size = sendstr(fd, str)) <= 0)
     {
         if (size == -1)
         {
@@ -32,6 +32,27 @@ static ssize_t handler(int clientfd)
         return 0;
     }
     return size;
+}
+
+static void event_add(int epollfd, struct epoll_event *event, int fd)
+{
+    event->events = EPOLLIN;
+    event->data.fd = fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, event) == -1)
+    {
+        perror("epoll_ctl");
+        exit(EXIT_FAILURE);
+    }
+}
+
+static void event_del(int epollfd, struct epoll_event *event, int fd)
+{
+    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, event) == -1)
+    {
+        perror("epoll_ctl");
+        exit(EXIT_FAILURE);
+    }
+    close(fd);
 }
 
 int main(void)
@@ -75,13 +96,7 @@ int main(void)
         perror("epoll_create1");
         exit(EXIT_FAILURE);
     }
-    event.events = EPOLLIN;
-    event.data.fd = serverfd;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, serverfd, &event) == -1)
-    {
-        perror("epoll_ctl");
-        exit(EXIT_FAILURE);
-    }
+    event_add(epollfd, &event, serverfd);
     while (1)
     {
         int nevents;
@@ -102,27 +117,16 @@ int main(void)
                     perror("accept");
                     exit(EXIT_FAILURE);
                 }
-                event.events = EPOLLIN;
-                event.data.fd = clientfd;
-                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &event) == -1)
-                {
-                    perror("epoll_ctl");
-                    exit(EXIT_FAILURE);
-                }
+                event_add(epollfd, &event, clientfd);
             }
             else if (!handler(clientfd))
             {
-                if (epoll_ctl(epollfd, EPOLL_CTL_DEL, clientfd, &event) == -1)
-                {
-                    perror("epoll_ctl");
-                    exit(EXIT_FAILURE);
-                }
-                close(clientfd);
+                event_del(epollfd, &event, clientfd);
             }
         }
     }
     // Never reached
-    close(serverfd);
+    event_del(epollfd, &event, serverfd);
     puts("Server exits");
     return 0;
 }
