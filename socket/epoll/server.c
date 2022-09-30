@@ -9,12 +9,12 @@
 #include <arpa/inet.h>
 #include "shared.h"
 
-static ssize_t handler(int fd)
+static ssize_t handler(int clientfd)
 {
     char str[BUFFER_SIZE];
     ssize_t size;
 
-    if ((size = recvstr(fd, str)) <= 0)
+    if ((size = recvstr(clientfd, str)) <= 0)
     {
         if (size == -1)
         {
@@ -22,8 +22,8 @@ static ssize_t handler(int fd)
         }
         return 0;
     }
-    printf("Client: %d | Size: %05zd | Client says: %s\n", fd, size, str);
-    if ((size = sendstr(fd, str)) <= 0)
+    printf("Client: %d | Size: %05zd | Client says: %s\n", clientfd, size, str);
+    if ((size = sendstr(clientfd, str)) <= 0)
     {
         if (size == -1)
         {
@@ -34,20 +34,24 @@ static ssize_t handler(int fd)
     return size;
 }
 
-static void event_add(int epollfd, struct epoll_event *event, int fd)
+static void event_add(int epollfd, int fd)
 {
-    event->events = EPOLLIN;
-    event->data.fd = fd;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, event) == -1)
+    struct epoll_event event;
+
+    event.events = EPOLLIN;
+    event.data.fd = fd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event) == -1)
     {
         perror("epoll_ctl");
         exit(EXIT_FAILURE);
     }
 }
 
-static void event_del(int epollfd, struct epoll_event *event, int fd)
+static void event_del(int epollfd, int fd)
 {
-    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, event) == -1)
+    struct epoll_event event;
+
+    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, &event) == -1)
     {
         perror("epoll_ctl");
         exit(EXIT_FAILURE);
@@ -88,7 +92,7 @@ int main(void)
     }
 
     enum {MAX_EVENTS = SERVER_LISTEN};
-    struct epoll_event event, events[MAX_EVENTS];
+    struct epoll_event events[MAX_EVENTS] = {0};
     int epollfd;
 
     if ((epollfd = epoll_create1(0)) == -1)
@@ -96,7 +100,7 @@ int main(void)
         perror("epoll_create1");
         exit(EXIT_FAILURE);
     }
-    event_add(epollfd, &event, serverfd);
+    event_add(epollfd, serverfd);
     while (1)
     {
         int nevents;
@@ -106,9 +110,17 @@ int main(void)
             perror("epoll_wait");
             exit(EXIT_FAILURE);
         }
-        for (int iter = 0; iter < nevents; iter++)
+        for (int event = 0; event < nevents; event++)
         {
-            int clientfd = events[iter].data.fd;
+            if ((events[event].events & EPOLLERR) ||
+                (events[event].events & EPOLLHUP) ||
+                (!(events[event].events & EPOLLIN)))
+            {
+                perror("epoll");
+                exit(EXIT_FAILURE);
+            }
+
+            int clientfd = events[event].data.fd;
 
             if (clientfd == serverfd)
             {
@@ -117,16 +129,16 @@ int main(void)
                     perror("accept");
                     exit(EXIT_FAILURE);
                 }
-                event_add(epollfd, &event, clientfd);
+                event_add(epollfd, clientfd);
             }
             else if (!handler(clientfd))
             {
-                event_del(epollfd, &event, clientfd);
+                event_del(epollfd, clientfd);
             }
         }
     }
     // Never reached
-    event_del(epollfd, &event, serverfd);
+    event_del(epollfd, serverfd);
     puts("Server exits");
     return 0;
 }
