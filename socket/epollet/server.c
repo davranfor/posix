@@ -14,11 +14,12 @@
 static ssize_t handler(int clientfd)
 {
     char str[BUFFER_SIZE];
+    size_t len = 0;
     ssize_t size;
 
     while (1)
     {
-        size = recv(clientfd, str, sizeof str, 0);
+        size = recv(clientfd, str + len, sizeof(str) - len, 0);
         if (size == -1)
         {
             if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
@@ -32,8 +33,9 @@ static ssize_t handler(int clientfd)
         {
             return 0;
         }
-        fwrite(str, sizeof(char), (size_t)size, stdout);
+        len += (size_t)size;
     }
+    fwrite(str, sizeof(char), len, stdout);
     if ((size = sendstr(clientfd, str)) <= 0)
     {
         if (size == -1)
@@ -140,7 +142,7 @@ int main(void)
                 (events[event].events & EPOLLHUP) ||
                 (!(events[event].events & EPOLLIN)))
             {
-                perror("epoll");
+                fprintf(stderr, "epoll: Bad event %u\n", events[event].events);
                 exit(EXIT_FAILURE);
             }
 
