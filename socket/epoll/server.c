@@ -116,7 +116,7 @@ int main(void)
                 (events[event].events & EPOLLHUP) ||
                 (!(events[event].events & EPOLLIN)))
             {
-                perror("epoll");
+                fprintf(stderr, "epoll: Bad event %u\n", events[event].events);
                 exit(EXIT_FAILURE);
             }
 
