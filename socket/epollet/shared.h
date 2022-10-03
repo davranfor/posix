@@ -7,7 +7,7 @@
 #define SERVER_PORT 8888
 #define SERVER_LISTEN 50
 
-#define BUFFER_SIZE 65536
+#define BUFFER_SIZE 1024
 
 ssize_t sendall(int, const void *, size_t);
 ssize_t recvall(int, void *, size_t);

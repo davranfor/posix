@@ -8,6 +8,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <errno.h>
 #include "shared.h"
 
 static atomic_int counter;
@@ -34,27 +36,33 @@ static void *handler(void *arg)
     {
         snprintf(str, sizeof str, "%05d) %02d Hello from client %02d\n", counter++, i, serverfd);
 
-        size_t len = strlen(str) + 1;
+        size_t len = strlen(str) + 1, sent = 0;
         ssize_t size = 0;
 
-        if ((size = sendall(serverfd, str, len)) <= 0)
+        while (sent < len)
+        {
+            size = send(serverfd, str + sent, len - sent, 0);
+            if (size < 0)
+            {
+                if (size == -1)
+                {
+                    perror("send");
+                }
+                return NULL;
+            }
+            sent += (size_t)size;
+        }
+        size = recv(serverfd, str, sizeof(str), 0);
+        if (size < 0)
         {
             if (size == -1)
             {
-                perror("sendall");
+                perror("recv");
             }
             return NULL;
         }
-        if ((size = recvstr(serverfd, str)) <= 0)
-        {
-            if (size == -1)
-            {
-                perror("recvstr");
-            }
-            return NULL;
-        }
-        fwrite(str, sizeof(char), (size_t)size, stdout);
-        //printf("Size: %05zd | Server says: %s", size, str);
+        //fwrite(str, sizeof(char), (size_t)size, stdout);
+printf("%s", str);
     }
     close(serverfd);
     return NULL;

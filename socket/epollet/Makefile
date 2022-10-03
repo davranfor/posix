@@ -4,11 +4,11 @@ LDLIBS = -lpthread
 
 all: server client
 
-server: server.c shared.c shared.h
-	$(CC) $(CFLAGS) server.c shared.c -o server
+server: server.c shared.h
+	$(CC) $(CFLAGS) server.c shared.h -o server
 
-client: client.c shared.c shared.h
-	$(CC) $(CFLAGS) client.c shared.c -o client $(LDLIBS)
+client: client.c shared.h
+	$(CC) $(CFLAGS) client.c shared.h -o client $(LDLIBS)
 
 clean:
 	rm -f server client
