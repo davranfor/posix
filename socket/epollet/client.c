@@ -61,8 +61,7 @@ static void *handler(void *arg)
             }
             return NULL;
         }
-        //fwrite(str, sizeof(char), (size_t)size, stdout);
-printf("%s", str);
+        fwrite(str, sizeof(char), (size_t)size, stdout);
     }
     close(serverfd);
     return NULL;
