@@ -69,11 +69,10 @@ static void event_del(int epollfd, msg *data)
 static ssize_t event_recv(msg *data)
 {
     size_t bytes = 0;
-    ssize_t size;
 
     while (1)
     {
-        size = recv(data->fd, data->str + bytes, sizeof(data->str) - bytes, 0);
+        ssize_t size = recv(data->fd, data->str + bytes, sizeof(data->str) - bytes, 0);
         if (size == -1)
         {
             if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
@@ -97,11 +96,11 @@ static ssize_t event_send(msg *data)
 {
     size_t len = strlen(data->str) + 1;
     size_t bytes = 0;
-    ssize_t size;
 
-    while (bytes != len)
+    while (1)
     {
-        size = send(data->fd, data->str + bytes, len - bytes, 0);
+        ssize_t size = send(data->fd, data->str + bytes, len - bytes, 0);
+
         if (size == -1)
         {
             if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
@@ -117,7 +116,7 @@ static ssize_t event_send(msg *data)
         }
         bytes += (size_t)size;
     }
-    return 1;
+    return len == bytes;
 }
 
 int main(void)
@@ -201,23 +200,12 @@ int main(void)
                 {
                     if (event_recv(data))
                     {
-                        events[event].events = EPOLLOUT;
+                        event_send(data);
                     }
                     else
                     {
                         event_del(epollfd, data);
                     }
-                }
-            }
-            if (events[event].events & EPOLLOUT)
-            {
-                if (event_send(data))
-                {
-                    events[event].events = EPOLLIN | EPOLLET;
-                }
-                else
-                {
-                    event_del(epollfd, data);
                 }
             }
         }
