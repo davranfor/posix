@@ -36,32 +36,47 @@ static void *handler(void *arg)
     {
         snprintf(str, sizeof str, "%05d) %02d Hello from client %02d\n", counter++, i, serverfd);
 
-        size_t len = strlen(str) + 1, sent = 0;
+        size_t bytes = strlen(str) + 1, sent = 0;
         ssize_t size = 0;
 
-        while (sent < len)
+        str[bytes - 1] = EOT;
+        while (sent < bytes)
         {
-            size = send(serverfd, str + sent, len - sent, 0);
-            if (size < 0)
+            size = send(serverfd, str + sent, bytes - sent, 0);
+            if (size == -1)
             {
-                if (size == -1)
-                {
-                    perror("send");
-                }
+                perror("send");
+                return NULL;
+            }
+            if (size == 0)
+            {
+                close(serverfd);
                 return NULL;
             }
             sent += (size_t)size;
         }
-        size = recv(serverfd, str, sizeof(str), 0);
-        if (size < 0)
+        bytes = 0;
+        while (1)
         {
+            size = recv(serverfd, str + bytes, sizeof(str) - bytes, 0);
             if (size == -1)
             {
-                perror("recv");
+                perror("send");
+                return NULL;
             }
-            return NULL;
+            if (size == 0)
+            {
+                close(serverfd);
+                return NULL;
+            }
+            bytes += (size_t)size;
+            if (str[bytes - 1] == EOT)
+            {
+                str[bytes - 1] = '\0';
+                break;
+            }
         }
-        fwrite(str, sizeof(char), (size_t)size, stdout);
+        fwrite(str, sizeof(char), bytes, stdout);
     }
     close(serverfd);
     return NULL;

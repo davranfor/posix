@@ -11,10 +11,13 @@
 #include <errno.h>
 #include "shared.h"
 
+enum {RECV, SEND};
+
 typedef struct
 {
-    char str[BUFFER_SIZE];
-    int fd;
+    char text[BUFFER_SIZE];
+    size_t rcvd, sent;
+    int fd, op;
 } msg;
 
 static void set_nonblocking(int fd)
@@ -30,8 +33,6 @@ static void set_nonblocking(int fd)
 
 static msg *event_add(int epollfd, int fd, unsigned events)
 {
-    set_nonblocking(fd);
-
     msg *data;
 
     if ((data = calloc(1, sizeof *data)) == NULL)
@@ -40,6 +41,8 @@ static msg *event_add(int epollfd, int fd, unsigned events)
         exit(EXIT_FAILURE);
     }
     data->fd = fd;
+    data->op = RECV;
+    set_nonblocking(fd);
 
     struct epoll_event event;
 
@@ -53,11 +56,13 @@ static msg *event_add(int epollfd, int fd, unsigned events)
     return data;
 }
 
-static void event_del(int epollfd, msg *data)
+static void event_del(int epollfd, struct epoll_event *event)
 {
-    struct epoll_event event;
+    msg *data = event->data.ptr;
 
-    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, data->fd, &event) == -1)
+    event->events = 0;
+    event->data.ptr = NULL;
+    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, data->fd, event) == -1)
     {
         perror("epoll_ctl");
         exit(EXIT_FAILURE);
@@ -66,57 +71,72 @@ static void event_del(int epollfd, msg *data)
     free(data);
 }
 
-static ssize_t event_recv(msg *data)
+static int msg_recv(msg *data)
 {
-    size_t bytes = 0;
-
-    while (1)
+    if (data->op == RECV)
     {
-        ssize_t size = recv(data->fd, data->str + bytes, sizeof(data->str) - bytes, 0);
-        if (size == -1)
+        while (1)
         {
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+            ssize_t size = recv(data->fd, data->text + data->rcvd, sizeof(data->text) - data->rcvd, 0);
+
+            if (size == -1)
             {
+                if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+                {
+                    return 1;
+                }
+                perror("recv");
+                return 0;
+            }
+            if (size == 0)
+            {
+                return 0;
+            }
+            data->rcvd += (size_t)size;
+            if (data->text[data->rcvd - 1] == EOT)
+            {
+                data->text[data->rcvd - 1] = '\0';
                 break;
             }
-            perror("recv");
-            return 0;
         }
-        if (size == 0)
-        {
-            return 0;
-        }
-        bytes += (size_t)size;
+        fwrite(data->text, sizeof(char), data->rcvd, stdout);
+        data->op = SEND;
     }
-    fwrite(data->str, sizeof(char), bytes, stdout);
     return 1;
 }
 
-static ssize_t event_send(msg *data)
+static int msg_send(msg *data)
 {
-    size_t len = strlen(data->str) + 1;
-    size_t bytes = 0;
-
-    while (1)
+    if (data->op == SEND)
     {
-        ssize_t size = send(data->fd, data->str + bytes, len - bytes, 0);
+        if ((data->sent == 0) && (data->rcvd > 0))
+        {
+            data->text[data->rcvd - 1] = EOT;
+        }
+        while (data->rcvd > 0)
+        {
+            ssize_t size = send(data->fd, data->text + data->sent, data->rcvd, 0);
 
-        if (size == -1)
-        {
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+            if (size == -1)
             {
-                break;
+                if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+                {
+                    return 1;
+                }
+                perror("recv");
+                return 0;
             }
-            perror("recv");
-            return 0;
+            if (size == 0)
+            {
+                return 0;
+            }
+            data->sent += (size_t)size;
+            data->rcvd -= (size_t)size;
         }
-        if (size == 0)
-        {
-            return 0;
-        }
-        bytes += (size_t)size;
+        data->sent = 0;
+        data->op = RECV;
     }
-    return len == bytes;
+    return 1;
 }
 
 int main(void)
@@ -175,7 +195,8 @@ int main(void)
         for (int event = 0; event < nevents; event++)
         {
             if ((events[event].events & EPOLLERR) ||
-                (events[event].events & EPOLLHUP))
+                (events[event].events & EPOLLHUP) ||
+                (!(events[event].events & (EPOLLIN | EPOLLOUT))))
             {
                 fprintf(stderr, "epoll: Bad event %u\n", events[event].events);
                 exit(EXIT_FAILURE);
@@ -185,33 +206,35 @@ int main(void)
 
             if (events[event].events & EPOLLIN)
             {
-                int clientfd = data->fd;
-
-                if (clientfd == serverfd)
+                if (data->fd == serverfd)
                 {
+                    int clientfd;
+
                     if ((clientfd = accept(serverfd, NULL, NULL)) == -1)
                     {
                         perror("accept");
                         exit(EXIT_FAILURE);
                     }
-                    event_add(epollfd, clientfd, EPOLLIN | EPOLLET);
+                    event_add(epollfd, clientfd, EPOLLIN | EPOLLOUT | EPOLLET);
+                    continue;
                 }
-                else
+                if (!msg_recv(data))
                 {
-                    if (event_recv(data))
-                    {
-                        event_send(data);
-                    }
-                    else
-                    {
-                        event_del(epollfd, data);
-                    }
+                    event_del(epollfd, &events[event]);
+                }
+            }
+            if (events[event].events & EPOLLOUT)
+            {
+                if (!msg_send(data))
+                {
+                    event_del(epollfd, &events[event]);
                 }
             }
         }
     }
     // Never reached
-    event_del(epollfd, serverev);
+    close(serverfd);
+    free(serverev);
     puts("Server exits");
     return 0;
 }

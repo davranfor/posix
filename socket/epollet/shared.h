@@ -7,12 +7,9 @@
 #define SERVER_PORT 8888
 #define SERVER_LISTEN 50
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 32768
 
-ssize_t sendall(int, const void *, size_t);
-ssize_t recvall(int, void *, size_t);
-ssize_t sendstr(int, const char *);
-ssize_t recvstr(int, char *);
+#define EOT 0x04
 
 #endif /* SHARED_H */
 
