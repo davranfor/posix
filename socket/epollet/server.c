@@ -16,7 +16,7 @@ enum {RECV, SEND};
 typedef struct
 {
     char text[BUFFER_SIZE];
-    size_t rcvd, sent;
+    size_t size, sent;
     int fd, op;
 } msg;
 
@@ -77,7 +77,7 @@ static int msg_recv(msg *data)
     {
         while (1)
         {
-            ssize_t size = recv(data->fd, data->text + data->rcvd, sizeof(data->text) - data->rcvd, 0);
+            ssize_t size = recv(data->fd, data->text + data->size, sizeof(data->text) - data->size, 0);
 
             if (size == -1)
             {
@@ -92,14 +92,14 @@ static int msg_recv(msg *data)
             {
                 return 0;
             }
-            data->rcvd += (size_t)size;
-            if (data->text[data->rcvd - 1] == EOT)
+            data->size += (size_t)size;
+            if (data->text[data->size - 1] == EOT)
             {
-                data->text[data->rcvd - 1] = '\0';
+                data->text[data->size - 1] = '\0';
                 break;
             }
         }
-        fwrite(data->text, sizeof(char), data->rcvd, stdout);
+        fwrite(data->text, sizeof(char), data->size, stdout);
         data->op = SEND;
     }
     return 1;
@@ -109,13 +109,13 @@ static int msg_send(msg *data)
 {
     if (data->op == SEND)
     {
-        if ((data->sent == 0) && (data->rcvd > 0))
+        if ((data->sent == 0) && (data->size > 0))
         {
-            data->text[data->rcvd - 1] = EOT;
+            data->text[data->size - 1] = EOT;
         }
-        while (data->rcvd > 0)
+        while (data->sent < data->size)
         {
-            ssize_t size = send(data->fd, data->text + data->sent, data->rcvd, 0);
+            ssize_t size = send(data->fd, data->text + data->sent, data->size - data->sent, 0);
 
             if (size == -1)
             {
@@ -131,8 +131,8 @@ static int msg_send(msg *data)
                 return 0;
             }
             data->sent += (size_t)size;
-            data->rcvd -= (size_t)size;
         }
+        data->size = 0;
         data->sent = 0;
         data->op = RECV;
     }

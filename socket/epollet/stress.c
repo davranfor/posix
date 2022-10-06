@@ -36,47 +36,47 @@ static void *handler(void *arg)
     {
         snprintf(str, sizeof str, "%05d) %02d Hello from client %02d\n", counter++, i, serverfd);
 
-        size_t bytes = strlen(str) + 1, sent = 0;
-        ssize_t size = 0;
+        size_t size = strlen(str) + 1;
+        size_t sent = 0;
 
-        str[bytes - 1] = EOT;
-        while (sent < bytes)
+        str[size - 1] = EOT;
+        while (sent < size)
         {
-            size = send(serverfd, str + sent, bytes - sent, 0);
-            if (size == -1)
+            ssize_t bytes = send(serverfd, str + sent, size - sent, 0);
+
+            if (bytes == -1)
             {
                 perror("send");
-                return NULL;
+                return 0;
             }
-            if (size == 0)
+            if (bytes == 0)
             {
-                close(serverfd);
-                return NULL;
+                return 0;
             }
-            sent += (size_t)size;
+            sent += (size_t)bytes;
         }
-        bytes = 0;
+        size = 0;
         while (1)
         {
-            size = recv(serverfd, str + bytes, sizeof(str) - bytes, 0);
-            if (size == -1)
+            ssize_t bytes = recv(serverfd, str + size, BUFFER_SIZE - size, 0);
+
+            if (bytes == -1)
             {
                 perror("recv");
-                return NULL;
+                return 0;
             }
-            if (size == 0)
+            if (bytes == 0)
             {
-                close(serverfd);
-                return NULL;
+                return 0;
             }
-            bytes += (size_t)size;
-            if (str[bytes - 1] == EOT)
+            size += (size_t)bytes;
+            if (str[size - 1] == EOT)
             {
-                str[bytes - 1] = '\0';
+                str[size - 1] = '\0';
                 break;
             }
         }
-        fwrite(str, sizeof(char), bytes, stdout);
+        fwrite(str, sizeof(char), size, stdout);
     }
     close(serverfd);
     return NULL;
