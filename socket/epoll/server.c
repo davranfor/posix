@@ -88,7 +88,7 @@ static int msg_send(int epollfd, struct epoll_event *event)
     {
         data->text[data->size - 1] = EOT;
     }
-    while (1)
+    while (data->sent < data->size)
     {
         ssize_t size = send(data->fd, data->text + data->sent, data->size - data->sent, 0);
 
@@ -98,7 +98,7 @@ static int msg_send(int epollfd, struct epoll_event *event)
             {
                 if (!(event->events & EPOLLOUT))
                 {
-                    event_mod(epollfd, event, EPOLLOUT);
+                    event_mod(epollfd, event, EPOLLOUT | EPOLLET);
                 }
                 return 1;
             }
@@ -110,14 +110,10 @@ static int msg_send(int epollfd, struct epoll_event *event)
             return 0;
         }
         data->sent += (size_t)size;
-        if (data->sent == data->size)
-        {
-            if (event->events & EPOLLOUT)
-            {
-                event_mod(epollfd, event, EPOLLIN | EPOLLET);
-            }
-            break;
-        }
+    }
+    if (event->events & EPOLLOUT)
+    {
+        event_mod(epollfd, event, EPOLLIN | EPOLLET);
     }
     data->size = 0;
     data->sent = 0;
