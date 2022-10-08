@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -11,14 +12,17 @@
 #include <errno.h>
 #include "shared.h"
 
-enum {RECV, SEND};
+enum {SEND, RECV};
 
 typedef struct
 {
     char text[BUFFER_SIZE];
     size_t size, sent;
-    int op, fd;
+    int op, fd, count;
 } msg;
+
+static int openfds;
+static int msgno;
 
 static void set_nonblocking(int fd)
 {
@@ -31,7 +35,7 @@ static void set_nonblocking(int fd)
     }
 }
 
-static msg *event_add(int epollfd, int fd, unsigned events)
+static void event_add(int epollfd, int fd, unsigned events)
 {
     msg *data;
 
@@ -52,7 +56,7 @@ static msg *event_add(int epollfd, int fd, unsigned events)
         perror("epoll_ctl");
         exit(EXIT_FAILURE);
     }
-    return data;
+    openfds++;
 }
 
 static void event_del(int epollfd, struct epoll_event *event)
@@ -68,6 +72,49 @@ static void event_del(int epollfd, struct epoll_event *event)
     }
     close(data->fd);
     free(data);
+    openfds--;
+}
+
+static int msg_send(msg *data)
+{
+    if (data->op != SEND)
+    {
+        return 1;
+    }
+    if (data->count == 100)
+    {
+        return 0;
+    }
+    if ((data->sent == 0) && (data->size == 0))
+    {
+        snprintf(data->text, sizeof data->text, "%05d) %02d Hello from client %02d\n", msgno++, data->count++, data->fd);
+
+        data->size = strlen(data->text) + 1;
+        data->text[data->size - 1] = EOT;
+    }
+    while (data->sent < data->size)
+    {
+        ssize_t size = send(data->fd, data->text + data->sent, data->size - data->sent, 0);
+
+        if (size == -1)
+        {
+            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+            {
+                return 1;
+            }
+            perror("recv");
+            return 0;
+        }
+        if (size == 0)
+        {
+            return 0;
+        }
+        data->sent += (size_t)size;
+    }
+    data->op = RECV;
+    data->sent = 0;
+    data->size = 0;
+    return 1;
 }
 
 static int msg_recv(msg *data)
@@ -100,42 +147,8 @@ static int msg_recv(msg *data)
         data->text[data->size - 1] = '\0';
         fwrite(data->text, sizeof(char), data->size, stdout);
         data->op = SEND;
+        data->size = 0;
     }
-    return 1;
-}
-
-static int msg_send(msg *data)
-{
-    if (data->op != SEND)
-    {
-        return 1;
-    }
-    if ((data->sent == 0) && (data->size > 0))
-    {
-        data->text[data->size - 1] = EOT;
-    }
-    while (data->sent < data->size)
-    {
-        ssize_t size = send(data->fd, data->text + data->sent, data->size - data->sent, 0);
-
-        if (size == -1)
-        {
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-            {
-                return 1;
-            }
-            perror("recv");
-            return 0;
-        }
-        if (size == 0)
-        {
-            return 0;
-        }
-        data->sent += (size_t)size;
-    }
-    data->op = RECV;
-    data->size = 0;
-    data->sent = 0;
     return 1;
 }
 
@@ -145,31 +158,8 @@ int main(void)
 
     memset(&server, 0, sizeof server);
     server.sin_family = AF_INET;
-    server.sin_addr.s_addr = htonl(INADDR_ANY);
+    server.sin_addr.s_addr = inet_addr(SERVER_ADDR);
     server.sin_port = htons(SERVER_PORT);
-
-    int serverfd, yes = 1;
-
-    if ((serverfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-    {
-        perror("socket");
-        exit(EXIT_FAILURE);
-    }
-    if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1)
-    {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-    if (bind(serverfd, (struct sockaddr *)&server, sizeof server) == -1)
-    {
-        perror("bind");
-        exit(EXIT_FAILURE);
-    }
-    if (listen(serverfd, SERVER_LISTEN) == -1)
-    {
-        perror("listen");
-        exit(EXIT_FAILURE);
-    }
 
     enum {MAX_EVENTS = SERVER_LISTEN};
     struct epoll_event events[MAX_EVENTS] = {0};
@@ -180,10 +170,23 @@ int main(void)
         perror("epoll_create1");
         exit(EXIT_FAILURE);
     }
+    for (int event = 0; event < MAX_EVENTS; event++)
+    {
+        int clientfd;
 
-    msg *serverev = event_add(epollfd, serverfd, EPOLLIN);
-
-    while (1)
+        if ((clientfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+        {
+            perror("socket");
+            exit(EXIT_FAILURE);
+        }
+        if (connect(clientfd, (struct sockaddr *)&server, sizeof server) == -1)
+        {
+            perror("connect");
+            exit(EXIT_FAILURE);
+        }
+        event_add(epollfd, clientfd, EPOLLIN | EPOLLOUT | EPOLLET);
+    }
+    while (openfds > 0)
     {
         int nevents;
 
@@ -206,18 +209,6 @@ int main(void)
 
             if (events[event].events & EPOLLIN)
             {
-                if (data->fd == serverfd)
-                {
-                    int clientfd;
-
-                    if ((clientfd = accept(serverfd, NULL, NULL)) == -1)
-                    {
-                        perror("accept");
-                        exit(EXIT_FAILURE);
-                    }
-                    event_add(epollfd, clientfd, EPOLLIN | EPOLLOUT | EPOLLET);
-                    continue;
-                }
                 if (!msg_recv(data))
                 {
                     event_del(epollfd, &events[event]);
@@ -232,10 +223,7 @@ int main(void)
             }
         }
     }
-    // Never reached
-    close(serverfd);
-    free(serverev);
-    puts("Server exits");
+    puts("Client exits");
     return 0;
 }
 
