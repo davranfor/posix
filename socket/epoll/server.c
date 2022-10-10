@@ -95,10 +95,10 @@ static int msg_send(msg *data)
         }
         data->sent += (size_t)size;
     }
-    data->size = 0;
-    data->sent = 0;
     data->send = msg_skip;
     data->recv = msg_recv;
+    data->size = 0;
+    data->sent = 0;
     return 1;
 }
 
