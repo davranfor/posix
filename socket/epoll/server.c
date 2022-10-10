@@ -11,13 +11,13 @@
 #include <errno.h>
 #include "shared.h"
 
-enum {RECV, SEND};
-
-typedef struct
+typedef struct msg
 {
     char text[BUFFER_SIZE];
+    int (*recv)(struct msg *);
+    int (*send)(struct msg *);
     size_t size, sent;
-    int op, fd;
+    int fd;
 } msg;
 
 static void set_nonblocking(int fd)
@@ -31,6 +31,77 @@ static void set_nonblocking(int fd)
     }
 }
 
+static int msg_skip(msg *data)
+{
+    (void)data;
+    return 1;
+}
+
+static int msg_send(msg *data);
+
+static int msg_recv(msg *data)
+{
+    while (1)
+    {
+        ssize_t size = recv(data->fd, data->text + data->size, sizeof(data->text) - data->size, 0);
+
+        if (size == -1)
+        {
+            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+            {
+                break;
+            }
+            perror("recv");
+            return 0;
+        }
+        if (size == 0)
+        {
+            return 0;
+        }
+        data->size += (size_t)size;
+    }
+    if ((data->size > 0) && (data->text[data->size - 1] == EOT))
+    {
+        data->text[data->size - 1] = '\0';
+        fwrite(data->text, sizeof(char), data->size, stdout);
+        data->recv = msg_skip;
+        data->send = msg_send;
+    }
+    return 1;
+}
+
+static int msg_send(msg *data)
+{
+    if ((data->sent == 0) && (data->size > 0))
+    {
+        data->text[data->size - 1] = EOT;
+    }
+    while (data->sent < data->size)
+    {
+        ssize_t size = send(data->fd, data->text + data->sent, data->size - data->sent, 0);
+
+        if (size == -1)
+        {
+            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+            {
+                return 1;
+            }
+            perror("recv");
+            return 0;
+        }
+        if (size == 0)
+        {
+            return 0;
+        }
+        data->sent += (size_t)size;
+    }
+    data->size = 0;
+    data->sent = 0;
+    data->send = msg_skip;
+    data->recv = msg_recv;
+    return 1;
+}
+
 static msg *event_add(int epollfd, int fd, unsigned events)
 {
     msg *data;
@@ -40,7 +111,10 @@ static msg *event_add(int epollfd, int fd, unsigned events)
         perror("calloc");
         exit(EXIT_FAILURE);
     }
+    data->recv = msg_recv;
+    data->send = msg_skip;
     data->fd = fd;
+
     set_nonblocking(fd);
 
     struct epoll_event event;
@@ -68,75 +142,6 @@ static void event_del(int epollfd, struct epoll_event *event)
     }
     close(data->fd);
     free(data);
-}
-
-static int msg_recv(msg *data)
-{
-    if (data->op != RECV)
-    {
-        return 1;
-    }
-    while (1)
-    {
-        ssize_t size = recv(data->fd, data->text + data->size, sizeof(data->text) - data->size, 0);
-
-        if (size == -1)
-        {
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-            {
-                break;
-            }
-            perror("recv");
-            return 0;
-        }
-        if (size == 0)
-        {
-            return 0;
-        }
-        data->size += (size_t)size;
-    }
-    if ((data->size > 0) && (data->text[data->size - 1] == EOT))
-    {
-        data->text[data->size - 1] = '\0';
-        fwrite(data->text, sizeof(char), data->size, stdout);
-        data->op = SEND;
-    }
-    return 1;
-}
-
-static int msg_send(msg *data)
-{
-    if (data->op != SEND)
-    {
-        return 1;
-    }
-    if ((data->sent == 0) && (data->size > 0))
-    {
-        data->text[data->size - 1] = EOT;
-    }
-    while (data->sent < data->size)
-    {
-        ssize_t size = send(data->fd, data->text + data->sent, data->size - data->sent, 0);
-
-        if (size == -1)
-        {
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-            {
-                return 1;
-            }
-            perror("recv");
-            return 0;
-        }
-        if (size == 0)
-        {
-            return 0;
-        }
-        data->sent += (size_t)size;
-    }
-    data->op = RECV;
-    data->size = 0;
-    data->sent = 0;
-    return 1;
 }
 
 int main(void)
@@ -218,14 +223,14 @@ int main(void)
                     event_add(epollfd, clientfd, EPOLLIN | EPOLLOUT | EPOLLET);
                     continue;
                 }
-                if (!msg_recv(data))
+                if (!data->recv(data))
                 {
                     event_del(epollfd, &events[event]);
                 }
             }
             if (events[event].events & EPOLLOUT)
             {
-                if (!msg_send(data))
+                if (!data->send(data))
                 {
                     event_del(epollfd, &events[event]);
                 }

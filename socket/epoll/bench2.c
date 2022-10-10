@@ -12,13 +12,13 @@
 #include <errno.h>
 #include "shared.h"
 
-enum {SEND, RECV};
-
-typedef struct
+typedef struct msg
 {
     char text[BUFFER_SIZE];
+    int (*send)(struct msg *);
+    int (*recv)(struct msg *);
     size_t size, sent;
-    int op, fd, count;
+    int fd, count;
 } msg;
 
 static int openfds;
@@ -35,52 +35,16 @@ static void set_nonblocking(int fd)
     }
 }
 
-static void event_add(int epollfd, int fd, unsigned events)
+static int msg_skip(msg *data)
 {
-    msg *data;
-
-    if ((data = calloc(1, sizeof *data)) == NULL)
-    {
-        perror("calloc");
-        exit(EXIT_FAILURE);
-    }
-    data->fd = fd;
-    set_nonblocking(fd);
-
-    struct epoll_event event;
-
-    event.events = events;
-    event.data.ptr = data;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event) == -1)
-    {
-        perror("epoll_ctl");
-        exit(EXIT_FAILURE);
-    }
-    openfds++;
+    (void)data;
+    return 1;
 }
 
-static void event_del(int epollfd, struct epoll_event *event)
-{
-    msg *data = event->data.ptr;
-
-    event->events = 0;
-    event->data.ptr = NULL;
-    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, data->fd, event) == -1)
-    {
-        perror("epoll_ctl");
-        exit(EXIT_FAILURE);
-    }
-    close(data->fd);
-    free(data);
-    openfds--;
-}
+static int msg_recv(msg *data);
 
 static int msg_send(msg *data)
 {
-    if (data->op != SEND)
-    {
-        return 1;
-    }
     if (data->count == 100)
     {
         return 0;
@@ -111,7 +75,8 @@ static int msg_send(msg *data)
         }
         data->sent += (size_t)size;
     }
-    data->op = RECV;
+    data->send = msg_skip;
+    data->recv = msg_recv;
     data->sent = 0;
     data->size = 0;
     return 1;
@@ -119,10 +84,6 @@ static int msg_send(msg *data)
 
 static int msg_recv(msg *data)
 {
-    if (data->op != RECV)
-    {
-        return 1;
-    }
     while (1)
     {
         ssize_t size = recv(data->fd, data->text + data->size, sizeof(data->text) - data->size, 0);
@@ -146,10 +107,54 @@ static int msg_recv(msg *data)
     {
         data->text[data->size - 1] = '\0';
         fwrite(data->text, sizeof(char), data->size, stdout);
-        data->op = SEND;
+        data->recv = msg_skip;
+        data->send = msg_send;
         data->size = 0;
     }
     return 1;
+}
+
+static void event_add(int epollfd, int fd, unsigned events)
+{
+    msg *data;
+
+    if ((data = calloc(1, sizeof *data)) == NULL)
+    {
+        perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+    data->send = msg_send;
+    data->recv = msg_skip;
+    data->fd = fd;
+
+    set_nonblocking(fd);
+
+    struct epoll_event event;
+
+    event.events = events;
+    event.data.ptr = data;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event) == -1)
+    {
+        perror("epoll_ctl");
+        exit(EXIT_FAILURE);
+    }
+    openfds++;
+}
+
+static void event_del(int epollfd, struct epoll_event *event)
+{
+    msg *data = event->data.ptr;
+
+    event->events = 0;
+    event->data.ptr = NULL;
+    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, data->fd, event) == -1)
+    {
+        perror("epoll_ctl");
+        exit(EXIT_FAILURE);
+    }
+    close(data->fd);
+    free(data);
+    openfds--;
 }
 
 int main(void)
@@ -209,14 +214,14 @@ int main(void)
 
             if (events[event].events & EPOLLIN)
             {
-                if (!msg_recv(data))
+                if (!data->recv(data))
                 {
                     event_del(epollfd, &events[event]);
                 }
             }
             if (events[event].events & EPOLLOUT)
             {
-                if (!msg_send(data))
+                if (!data->send(data))
                 {
                     event_del(epollfd, &events[event]);
                 }
