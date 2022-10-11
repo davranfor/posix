@@ -24,24 +24,13 @@ typedef struct msg
 static int openfds;
 static int msgno;
 
-static void set_nonblocking(int fd)
-{
-    int flags = fcntl(fd, F_GETFL, 0);
-
-    if ((flags == -1) || (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1))
-    {
-        perror("fcntl");
-        exit(EXIT_FAILURE);
-    }
-}
+static int msg_recv(msg *data);
 
 static int msg_skip(msg *data)
 {
     (void)data;
     return 1;
 }
-
-static int msg_recv(msg *data);
 
 static int msg_send(msg *data)
 {
@@ -127,7 +116,13 @@ static void event_add(int epollfd, int fd, unsigned events)
     data->recv = msg_skip;
     data->fd = fd;
 
-    set_nonblocking(fd);
+    int flags = fcntl(fd, F_GETFL, 0);
+
+    if ((flags == -1) || (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1))
+    {
+        perror("fcntl");
+        exit(EXIT_FAILURE);
+    }
 
     struct epoll_event event;
 
