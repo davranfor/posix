@@ -18,7 +18,7 @@ try:
             chunk = sock.recv(32768)
             data.append(chunk)
             if chunk[-1] == EOT:
-                # b''.join to caoncat all elements of the list
+                # b''.join to concat all elements of the list
                 # [:-1] removes the last character, in this case EOT
                 data = b''.join(data).decode()[:-1]
                 break
