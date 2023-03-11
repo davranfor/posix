@@ -1,6 +1,7 @@
 from sys import stdin
 import socket
 
+BUFFER_SIZE = 32768
 EOT = 0x04
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -15,7 +16,7 @@ try:
 
         data = []
         while True:
-            chunk = sock.recv(32768)
+            chunk = sock.recv(BUFFER_SIZE)
             data.append(chunk)
             if chunk[-1] == EOT:
                 # b''.join to concat all elements of the list
@@ -26,3 +27,4 @@ try:
 finally:
     print('Client exits')
     sock.close()
+
