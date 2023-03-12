@@ -9,13 +9,11 @@ EOT = 0x04
 def handle(sock):
     for message in sys.stdin:
         message = message + chr(EOT)
-
         try:
             sock.sendall(message.encode())
         except socket.error as e: 
             print('Error sending data: %s' % e, file = sys.stderr)
             sys.exit(1) 
-
         data = []
         while True:
             try:
@@ -33,15 +31,19 @@ def handle(sock):
                 break
         print('Size: ' + str(len(data)) + ' | Server says: ' + data, end = '')
 
-addr = (HOST, PORT)
-print('Connecting to %s port %s' % addr)
-try:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(addr)
-except socket.error as e: 
-    print('Error connecting to server: %s' % e, file = sys.stderr)
-    sys.exit(1) 
-handle(sock)
-print('Client exits')
-sock.close()
+def main():
+    address = (HOST, PORT)
+    print('Connecting to %s port %s' % address)
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(address)
+    except socket.error as e: 
+        print('Error connecting to server: %s' % e, file = sys.stderr)
+        sys.exit(1) 
+    handle(sock)
+    print('Client exits')
+    sock.close()
+
+if __name__ == '__main__':
+    main()
 
