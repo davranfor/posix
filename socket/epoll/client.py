@@ -1,22 +1,30 @@
-from sys import stdin
+import sys
 import socket
 
+HOST = '127.0.0.1'
+PORT = 8888
 BUFFER_SIZE = 32768
 EOT = 0x04
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_address = ('127.0.0.1', 8888)
-print('connecting to %s port %s' % server_address)
-sock.connect(server_address)
-
-try:
-    for message in stdin:
+def handle(sock):
+    for message in sys.stdin:
         message = message + chr(EOT)
-        sock.sendall(message.encode())
+
+        try:
+            sock.sendall(message.encode())
+        except socket.error as e: 
+            print('Error sending data: %s' % e, file = sys.stderr)
+            sys.exit(1) 
 
         data = []
         while True:
-            chunk = sock.recv(BUFFER_SIZE)
+            try:
+                chunk = sock.recv(BUFFER_SIZE)
+            except socket.error as e: 
+                print('Error receiving data: %s' % e, file = sys.stderr)
+                sys.exit(1) 
+            if not chunk:
+                return
             data.append(chunk)
             if chunk[-1] == EOT:
                 # b''.join to concat all elements of the list
@@ -24,7 +32,16 @@ try:
                 data = b''.join(data).decode()[:-1]
                 break
         print('Size: ' + str(len(data)) + ' | Server says: ' + data, end = '')
-finally:
-    print('Client exits')
-    sock.close()
+
+addr = (HOST, PORT)
+print('Connecting to %s port %s' % addr)
+try:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(addr)
+except socket.error as e: 
+    print('Error connecting to server: %s' % e, file = sys.stderr)
+    sys.exit(1) 
+handle(sock)
+print('Client exits')
+sock.close()
 
