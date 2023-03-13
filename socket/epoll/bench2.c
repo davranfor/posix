@@ -41,7 +41,6 @@ static int msg_send(msg *data)
     if ((data->sent == 0) && (data->size == 0))
     {
         snprintf(data->text, sizeof data->text, "%05d) %02d Hello from client %02d\n", msgno++, data->count++, data->fd);
-
         data->size = strlen(data->text) + 1;
         data->text[data->size - 1] = EOT;
     }
@@ -105,9 +104,9 @@ static int msg_recv(msg *data)
 
 static void event_add(int epollfd, int fd, unsigned events)
 {
-    msg *data;
+    msg *data = calloc(1, sizeof *data);
 
-    if ((data = calloc(1, sizeof *data)) == NULL)
+    if (data == NULL)
     {
         perror("calloc");
         exit(EXIT_FAILURE);
@@ -188,9 +187,9 @@ int main(void)
     }
     while (openfds > 0)
     {
-        int nevents;
+        int nevents = epoll_wait(epollfd, events, MAX_EVENTS, -1);
 
-        if ((nevents = epoll_wait(epollfd, events, MAX_EVENTS, -1)) == -1)
+        if (nevents == -1)
         {
             perror("epoll_wait");
             exit(EXIT_FAILURE);
@@ -202,7 +201,8 @@ int main(void)
                 (!(events[event].events & (EPOLLIN | EPOLLOUT))))
             {
                 fprintf(stderr, "epoll: Bad event %u\n", events[event].events);
-                exit(EXIT_FAILURE);
+                event_del(epollfd, &events[event]);
+                continue;
             }
 
             msg *data = events[event].data.ptr;

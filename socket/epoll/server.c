@@ -91,11 +91,11 @@ static int msg_send(msg *data)
     return 1;
 }
 
-static msg *event_add(int epollfd, int fd, unsigned events)
+static void event_add(int epollfd, int fd, unsigned events)
 {
-    msg *data;
+    msg *data = calloc(1, sizeof *data);
 
-    if ((data = calloc(1, sizeof *data)) == NULL)
+    if (data == NULL)
     {
         perror("calloc");
         exit(EXIT_FAILURE);
@@ -121,7 +121,6 @@ static msg *event_add(int epollfd, int fd, unsigned events)
         perror("epoll_ctl");
         exit(EXIT_FAILURE);
     }
-    return data;
 }
 
 static void event_del(int epollfd, struct epoll_event *event)
@@ -180,14 +179,12 @@ int main(void)
         perror("epoll_create1");
         exit(EXIT_FAILURE);
     }
-
-    msg *serverev = event_add(epollfd, serverfd, EPOLLIN);
-
+    event_add(epollfd, serverfd, EPOLLIN);
     while (1)
     {
-        int nevents;
+        int nevents = epoll_wait(epollfd, events, MAX_EVENTS, -1);
 
-        if ((nevents = epoll_wait(epollfd, events, MAX_EVENTS, -1)) == -1)
+        if (nevents == -1)
         {
             perror("epoll_wait");
             exit(EXIT_FAILURE);
@@ -199,7 +196,8 @@ int main(void)
                 (!(events[event].events & (EPOLLIN | EPOLLOUT))))
             {
                 fprintf(stderr, "epoll: Bad event %u\n", events[event].events);
-                exit(EXIT_FAILURE);
+                event_del(epollfd, &events[event]);
+                continue;
             }
 
             msg *data = events[event].data.ptr;
@@ -208,9 +206,9 @@ int main(void)
             {
                 if (data->fd == serverfd)
                 {
-                    int clientfd;
+                    int clientfd = accept(serverfd, NULL, NULL);
 
-                    if ((clientfd = accept(serverfd, NULL, NULL)) == -1)
+                    if (clientfd == -1)
                     {
                         perror("accept");
                         exit(EXIT_FAILURE);
@@ -234,7 +232,6 @@ int main(void)
     }
     // Never reached
     close(serverfd);
-    free(serverev);
     puts("Server exits");
     return 0;
 }
