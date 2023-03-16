@@ -6,7 +6,7 @@ PORT = 8888
 BUFFER_SIZE = 32768
 EOT = 0x04
 
-def handle_send(sock, data):
+def send(sock, data):
     data = (data + chr(EOT)).encode()
     sent = 0
     while sent < len(data):
@@ -20,7 +20,7 @@ def handle_send(sock, data):
         sent += size
     return True
 
-def handle_recv(sock):
+def recv(sock):
     data = b''
     rcvd = 0
     while True:
@@ -34,14 +34,14 @@ def handle_recv(sock):
             return False
         if data[-1] == EOT:
             data = data.decode()[:-1]
-            break
+            print('Size: %05d | Server says: %s' % (size, data), end = '')
+            return True 
         rcvd = size
-    print('Size: ' + str(len(data)) + ' | Server says: ' + data, end = '')
     return True
 
 def handle(sock):
     for data in sys.stdin:
-        if not handle_send(sock, data) or not handle_recv(sock):
+        if not send(sock, data) or not recv(sock):
             return
 
 def main():
@@ -52,7 +52,7 @@ def main():
         sock.connect(address)
     except socket.error as e: 
         print('Error connecting to server: %s' % e, file = sys.stderr)
-        sys.exit(1) 
+        sys.exit(1)
     handle(sock)
     print('Client exits')
     sock.close()
