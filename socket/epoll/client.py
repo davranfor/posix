@@ -4,10 +4,10 @@ import socket
 HOST = '127.0.0.1'
 PORT = 8888
 BUFFER_SIZE = 32768
-EOT = 0x04
+NUL = 0x00
 
 def send(sock, data):
-    data = (data + chr(EOT)).encode()
+    data = (data + chr(NUL)).encode()
     sent = 0
     while sent < len(data):
         try:
@@ -32,7 +32,7 @@ def recv(sock):
         size = len(data)
         if size == rcvd:
             return False
-        if data[-1] == EOT:
+        if data[-1] == NUL:
             data = data.decode()[:-1]
             print('Size: %05d | Server says: %s' % (size, data), end = '')
             return True 

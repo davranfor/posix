@@ -13,7 +13,6 @@ static int handler(int serverfd, char *str)
     size_t size = strlen(str) + 1;
     size_t sent = 0;
 
-    str[size - 1] = EOT;
     while (sent < size)
     {
         ssize_t bytes = send(serverfd, str + sent, size - sent, 0);
@@ -44,9 +43,8 @@ static int handler(int serverfd, char *str)
             return 0;
         }
         size += (size_t)bytes;
-        if (str[size - 1] == EOT)
+        if (str[size - 1] == '\0')
         {
-            str[size - 1] = '\0';
             break;
         }
     }
