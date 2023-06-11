@@ -71,7 +71,7 @@ static int msg_send(msg *data, int fd)
             {
                 return 1;
             }
-            perror("recv");
+            perror("send");
             return 0;
         }
         if (sent == 0)
