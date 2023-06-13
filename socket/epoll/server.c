@@ -39,7 +39,7 @@ static int msg_recv(msg *data, int fd)
 
             if (text == NULL)
             {
-                perror("malloc");
+                perror("realloc");
                 return 0;
             }
             data->text = text;
