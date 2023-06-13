@@ -16,7 +16,7 @@ typedef struct msg
 {
     int (*recv)(struct msg *, int);
     int (*send)(struct msg *, int);
-    size_t rcvd, sent;
+    size_t sent, size, room;
     char *text;
 } msg;
 
@@ -33,9 +33,22 @@ static int msg_recv(msg *data, int fd)
 {
     while (1)
     {
-        ssize_t rcvd = recv(fd, data->text + data->rcvd, BUFFER_SIZE - data->rcvd, 0);
+        if (data->size == data->room)
+        {
+            char *text = realloc(data->text, data->room + BUFFER_SIZE);
 
-        if (rcvd == -1)
+            if (text == NULL)
+            {
+                perror("malloc");
+                return 0;
+            }
+            data->text = text;
+            data->room += BUFFER_SIZE;
+        }
+
+        ssize_t size = recv(fd, data->text + data->size, data->room - data->size, 0);
+
+        if (size == -1)
         {
             if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
             {
@@ -44,15 +57,15 @@ static int msg_recv(msg *data, int fd)
             perror("recv");
             return 0;
         }
-        if (rcvd == 0)
+        if (size == 0)
         {
             return 0;
         }
-        data->rcvd += (size_t)rcvd;
+        data->size += (size_t)size;
     }
-    if ((data->rcvd > 0) && (data->text[data->rcvd - 1] == '\0'))
+    if ((data->size > 0) && (data->text[data->size - 1] == '\0'))
     {
-        fwrite(data->text, sizeof(char), data->rcvd, stdout);
+        fwrite(data->text, sizeof(char), data->size, stdout);
         data->recv = msg_skip;
         data->send = msg_send;
     }
@@ -61,9 +74,9 @@ static int msg_recv(msg *data, int fd)
 
 static int msg_send(msg *data, int fd)
 {
-    while (data->sent < data->rcvd)
+    while (data->sent < data->size)
     {
-        ssize_t sent = send(fd, data->text + data->sent, data->rcvd - data->sent, 0);
+        ssize_t sent = send(fd, data->text + data->sent, data->size - data->sent, 0);
 
         if (sent == -1)
         {
@@ -82,8 +95,8 @@ static int msg_send(msg *data, int fd)
     }
     data->send = msg_skip;
     data->recv = msg_recv;
-    data->rcvd = 0;
     data->sent = 0;
+    data->size = 0;
     return 1;
 }
 
@@ -91,18 +104,48 @@ static void msg_clear(msg *data)
 {
     data->recv = msg_recv;
     data->send = msg_skip;
-    data->rcvd = 0;
     data->sent = 0;
+    data->size = 0;
+}
+
+static msg *pool_create(size_t events)
+{
+    msg *pool = malloc(events * sizeof *pool);
+
+    if (pool == NULL)
+    {
+        return NULL;
+    }
+    for (size_t id = 0; id < events; id++)
+    {
+        msg_clear(&pool[id]);
+        pool[id].room = BUFFER_SIZE;
+        pool[id].text = malloc(BUFFER_SIZE);
+        if (pool[id].text == NULL)
+        {
+            return NULL;
+        }
+    }
+    return pool;
+}
+
+static void pool_free(msg *pool, size_t events)
+{
+    for (size_t id = 0; id < events; id++)
+    {
+        free(pool[id].text);
+    }
+    free(pool);
 }
 
 static uint32_t map_set(uint8_t *map, uint32_t max)
 {
-    for (uint32_t i = 0; i < max; i++)
+    for (uint32_t id = 0; id < max; id++)
     {
-        if (map[i] == 0)
+        if (map[id] == 0)
         {
-            map[i] = 1;
-            return i;
+            map[id] = 1;
+            return id;
         }
     }
     return 0;
@@ -189,29 +232,19 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
-    msg *msgs = malloc(MAX_EVENTS * sizeof *msgs);
-
-    if (msgs == NULL)
-    {
-        perror("malloc");
-        exit(EXIT_FAILURE);
-    }
-    for (int i = 0; i < MAX_EVENTS; i++)
-    {
-        msg_clear(&msgs[i]);
-        msgs[i].text = malloc(BUFFER_SIZE);
-        if (msgs[i].text == NULL)
-        {
-            perror("malloc");
-            exit(EXIT_FAILURE);
-        }
-    }
-
     uint8_t *map = calloc(MAX_EVENTS, sizeof *map);
 
     if (map == NULL)
     {
         perror("calloc");
+        exit(EXIT_FAILURE);
+    }
+
+    msg *pool = pool_create(MAX_EVENTS);
+
+    if (pool == NULL)
+    {
+        perror("pool_create");
         exit(EXIT_FAILURE);
     }
 
@@ -239,7 +272,7 @@ int main(void)
             uint32_t u32 = event->data.u32;
             uint32_t id = u32 >> 16;
             int fd = u32 & 0xffff;
-            msg *data = &msgs[id];
+            msg *data = &pool[id];
 
             if ((event->events & EPOLLERR) ||
                 (event->events & EPOLLHUP) ||
@@ -287,8 +320,8 @@ int main(void)
     // Never reached
     puts("Server exits");
     close(serverfd);
+    pool_free(pool, MAX_EVENTS);
     free(events);
-    free(msgs);
     free(map);
     return 0;
 }

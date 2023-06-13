@@ -7,8 +7,6 @@
 
 #define BUFFER_SIZE 32768
 
-#define EOT 0x04
-
 /* Skip warning: ISO C forbids an empty translation unit */
 typedef int make_iso_compilers_happy;
 
