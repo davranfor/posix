@@ -45,7 +45,7 @@ int main(void)
     call(pthread_cond_init, &cond, NULL);
     for (int i = 0; i < NTHREADS; i++)
     {
-        call(pthread_create, &thread[i], NULL, handler, (void *)&thread_id[i]);
+        call(pthread_create, &thread[i], NULL, handler, &thread_id[i]);
     }
     for (int i = 0; i < NTHREADS; i++)
     {
