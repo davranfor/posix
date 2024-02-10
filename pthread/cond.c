@@ -4,8 +4,12 @@
 
 #define NTHREADS 2
 
-#define pthread_call(func, ...) \
-    do if (pthread_##func(__VA_ARGS__)) { perror("pthread_"#func); exit(EXIT_FAILURE); } while (0)
+#define pthread_call(func, ...)         \
+    do if (pthread_##func(__VA_ARGS__)) \
+    {                                   \
+        perror("pthread_"#func);        \
+        exit(EXIT_FAILURE);             \
+    } while (0)
 
 static pthread_mutex_t mutex;
 static pthread_cond_t cond;
