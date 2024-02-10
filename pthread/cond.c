@@ -1,70 +1,58 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <pthread.h>
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+#define NTHREADS 2
 
-static int done = 0;
+#define call(func, ...) \
+    do if (func(__VA_ARGS__)) { perror(#func); exit(EXIT_FAILURE); } while (0)
 
-void *handler(void *args)
+static pthread_mutex_t mutex;
+static pthread_cond_t cond;
+static int shared_data;
+
+static void *handler(void *arg)
 {
-    (void)args;
-    puts("thread doing stuff ...");
-    if (pthread_mutex_lock(&mutex) != 0)
+    int thread_id = *(int *)arg;
+
+    call(pthread_mutex_lock, &mutex);
+    if (thread_id == 1)
     {
-        perror("pthread_mutex_lock"); 
-        exit(EXIT_FAILURE);
-    }
-    while (!done)
-    {
-        if (pthread_cond_wait(&cond, &mutex) != 0)
+        printf("Thread 1 is waiting for data to be modified...\n");
+        while (shared_data == 0)
         {
-            perror("pthread_cond_wait");
-            exit(EXIT_FAILURE);
+            call(pthread_cond_wait, &cond, &mutex);
         }
+        printf("Thread 1 detected data modification: %d\n", shared_data);
     }
-    if (pthread_mutex_unlock(&mutex) != 0)
+    else
     {
-        perror("pthread_mutex_unlock");
-        exit(EXIT_FAILURE);
+        printf("Thread 2 is modifying the data...\n");
+        shared_data = 42;
+        printf("Thread 2 modified the data to: %d\n", shared_data);
+        call(pthread_cond_signal, &cond);
     }
-    puts("thread doing more stuff ...");
-    return NULL;
+    call(pthread_mutex_unlock, &mutex);
+    pthread_exit(NULL);
 }
 
 int main(void)
 {
-    pthread_t thread;
+    int thread_id[NTHREADS] = {1, 2};
+    pthread_t thread[NTHREADS];
 
-    if (pthread_create(&thread, NULL, handler, NULL) != 0)
+    call(pthread_mutex_init, &mutex, NULL);
+    call(pthread_cond_init, &cond, NULL);
+    for (int i = 0; i < NTHREADS; i++)
     {
-        perror("pthread_create");
-        exit(EXIT_FAILURE);
+        call(pthread_create, &thread[i], NULL, handler, (void *)&thread_id[i]);
     }
-    if (pthread_mutex_lock(&mutex) != 0)
+    for (int i = 0; i < NTHREADS; i++)
     {
-        perror("pthread_mutex_lock");
-        exit(EXIT_FAILURE);
+        call(pthread_join, thread[i], NULL);
     }
-    sleep(1);
-    done = 1;
-    if (pthread_cond_signal(&cond) != 0)
-    {
-        perror("pthread_cond_signal");
-        exit(EXIT_FAILURE);
-    }
-    if (pthread_mutex_unlock(&mutex) != 0)
-    {
-        perror("pthread_mutex_unlock");
-        exit(EXIT_FAILURE);
-    }
-    if (pthread_join(thread, NULL) != 0)
-    {
-        perror("pthread_join");
-        exit(EXIT_FAILURE);
-    }
+    call(pthread_mutex_destroy, &mutex);
+    call(pthread_cond_destroy, &cond);
     return 0;
 }
 
