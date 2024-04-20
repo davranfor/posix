@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <pthread.h>
-#include <unistd.h>
 
 #define pthread_call(func, ...)         \
     do if (pthread_##func(__VA_ARGS__)) \
@@ -24,19 +23,20 @@ static void *producer(void *arg)
 {
     (void)arg;
 
-    int inc = 0, quit = 0;
+    int size = 0, quit = 0;
 
     while (!quit)
     {
-        int item = rand() % 100;
-
         pthread_call(mutex_lock, &mutex);
         while (count == BUFFER_SIZE)
         {
             // Buffer is full, wait for consumer to consume items
             pthread_call(cond_wait, &cond_full, &mutex);
         }
-        buffer[inc++ % BUFFER_SIZE] = item;
+
+        int item = rand() % 100;
+
+        buffer[size++ % BUFFER_SIZE] = item;
         quit = item == 0;
         count++;
         printf("Produced: %d\n", item);
@@ -51,19 +51,19 @@ static void *consumer(void *arg)
 {
     (void)arg;
 
-    int inc = 0, quit = 0;
+    int size = 0, quit = 0;
 
     while (!quit)
     {
-        int item;
-
         pthread_call(mutex_lock, &mutex);
         while (count == 0)
         {
             // Buffer is empty, wait for producer to produce items
             pthread_call(cond_wait, &cond_empty, &mutex);
         }
-        item = buffer[inc++ % BUFFER_SIZE];
+
+        int item = buffer[size++ % BUFFER_SIZE];
+
         quit = item == 0;
         count--;
         printf("Consumed: %d\n", item);
