@@ -1,64 +1,31 @@
-#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
 #include "shared.h"
 
-ssize_t sendall(int sockfd, const void *buf, size_t size)
+int pool_add(struct poolfd *pool, const char *data, size_t size)
 {
-    size_t sent = 0;
+    char *temp = realloc(pool->data, pool->size + size);
 
-    while (sent < size)
+    if (temp == NULL)
     {
-        ssize_t bytes = send(sockfd, ((const unsigned char *)buf) + sent, size - sent, 0);
-
-        if (bytes < 1)
-        {
-            return bytes;
-        }
-        sent += (size_t)bytes;
+        return 0;
     }
-    return (ssize_t)sent;
+    pool->data = temp;
+    memcpy(pool->data + pool->size, data, size);
+    pool->size += size;
+    return 1;
 }
 
-ssize_t recvall(int sockfd, void *buf, size_t size)
+void pool_sync(struct poolfd *pool, size_t sent)
 {
-    size_t rcvd = 0;
-
-    while (rcvd < size)
-    {
-        ssize_t bytes = recv(sockfd, ((unsigned char *)buf) + rcvd, size - rcvd, 0);
-
-        if (bytes < 1)
-        {
-            return bytes;
-        }
-        rcvd += (size_t)bytes;
-    }
-    return (ssize_t)rcvd;
+    pool->sent += sent;
 }
 
-ssize_t sendstr(int sockfd, const char *str)
+void pool_reset(struct poolfd *pool)
 {
-    size_t size = strlen(str) + 1;
-    uint16_t map = htons((uint16_t)size);
-    ssize_t bytes = sendall(sockfd, &map, sizeof map);
-
-    if (bytes != sizeof map)
-    {
-        return bytes;
-    }
-    return sendall(sockfd, str, size);
-}
-
-ssize_t recvstr(int sockfd, char *str)
-{
-    uint16_t map = 0;
-    ssize_t bytes = recvall(sockfd, &map, sizeof map);
-
-    if (bytes != sizeof map)
-    {
-        return bytes;
-    }
-    return recvall(sockfd, str, ntohs(map));
+    free(pool->data);
+    pool->data = NULL;
+    pool->size = 0;
+    pool->sent = 0;
 }
 

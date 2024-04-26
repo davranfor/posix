@@ -7,31 +7,140 @@
 #include <sys/poll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <errno.h>
 #include "shared.h"
 
-static ssize_t handler(int clientfd)
-{
-    char str[BUFFER_SIZE];
-    ssize_t size;
+static char buffer[BUFFER_SIZE];
 
-    if ((size = recvstr(clientfd, str)) <= 0)
+static void conn_close(struct pollfd *conn)
+{
+    close(conn->fd);
+    conn->fd = 0;
+    conn->events = 0;
+    conn->revents = 0;
+}
+
+static void conn_handle(struct pollfd *conn, struct poolfd *pool)
+{
+    size_t size = 0, sent = 0;
+    char *data = NULL;
+
+    if (!(conn->revents & POLLOUT))
     {
-        if (size == -1)
+        while (size < BUFFER_SIZE)
         {
-            perror("recvstr");
+            ssize_t bytes = recv(conn->fd, buffer + size, BUFFER_SIZE - size, 0);
+
+            if (bytes == -1)
+            {
+                if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+                {
+                    break;
+                }
+                perror("recv");
+                goto stop;
+            }
+            if (bytes == 0)
+            {
+                goto stop;
+            }
+            size += (size_t)bytes;
         }
-        return 0;
+        if ((pool->data == NULL) && (size > 0) && (buffer[size - 1] == '\0'))
+        {
+            data = buffer;
+        }
+        else if (size > 0)
+        {
+            if (!pool_add(pool, buffer, size))
+            {
+                perror("pool_add");
+                goto stop;
+            }
+            if (buffer[size - 1] == '\0')
+            {
+                data = pool->data;
+                size = pool->size;
+            }
+            else
+            {
+                return;
+            }
+        }
+        else
+        {
+            return;
+        }
+        fwrite(data, sizeof(char), size, stdout);
     }
-    printf("Client: %d | Size: %05zd | Client says: %s\n", clientfd, size, str);
-    if ((size = sendstr(clientfd, str)) <= 0)
+    else
     {
-        if (size == -1)
+        if (pool->data != NULL)
         {
-            perror("sendstr");
+            data = pool->data + pool->sent;
+            size = pool->size - pool->sent;
         }
-        return 0;
+        conn->events &= ~POLLOUT;
     }
-    return size;
+    if (data != NULL)
+    {
+        while (sent < size)
+        {
+            ssize_t bytes = send(conn->fd, data + sent, size - sent, 0);
+
+            if (bytes == -1)
+            {
+                if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+                {
+                    break;
+                }
+                perror("send");
+                goto stop;
+            }
+            if (bytes == 0)
+            {
+                goto stop;
+            }
+            sent += (size_t)bytes;
+        }
+        if (sent == size)
+        {
+            pool_reset(pool);
+        }
+        else
+        {
+            if (pool->data == NULL)
+            {
+                if (!pool_add(pool, data + sent, size - sent))
+                {
+                    perror("pool_add");
+                    goto stop;
+                }
+            }
+            else
+            {
+                pool_sync(pool, sent);
+            }
+            conn->events |= POLLOUT;
+        }
+        return;
+    }
+stop:
+    printf("Closing %d ...\n", conn->fd);
+    conn_close(conn);
+    pool_reset(pool);
+}
+
+static int unblock(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+
+    if (flags == -1)
+    {
+        return -1;
+    }
+    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
 int main(void)
@@ -60,6 +169,11 @@ int main(void)
         perror("bind");
         exit(EXIT_FAILURE);
     }
+    if (unblock(serverfd) == -1)
+    {
+        perror("unblock");
+        exit(EXIT_FAILURE);
+    }
     if (listen(serverfd, SERVER_LISTEN) == -1)
     {
         perror("listen");
@@ -67,6 +181,7 @@ int main(void)
     }
 
     enum {MAX_CLIENTS = SERVER_LISTEN + 1};
+    struct poolfd pool[MAX_CLIENTS] = {0};
     struct pollfd fds[MAX_CLIENTS] = {0};
 
     fds[0].fd = serverfd;
@@ -84,34 +199,39 @@ int main(void)
         {
             if (fds[0].revents & POLLIN)
             {
-                int clientfd;
+                int clientfd = accept(serverfd, NULL, NULL);
 
-                if ((clientfd = accept(serverfd, NULL, NULL)) == -1)
+                if (clientfd == -1)
                 {
-                    perror("accept");
-                    exit(EXIT_FAILURE);
-                }
-                for (nfds_t client = 1; client < MAX_CLIENTS; client++)
-                {
-                    if (fds[client].fd == 0)
+                    if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
                     {
-                        fds[client].fd = clientfd;
-                        fds[client].events = POLLIN;
-                        break;
+                        perror("accept");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+                else
+                {
+                    if (unblock(clientfd) == -1)
+                    {
+                        perror("unblock");
+                        exit(EXIT_FAILURE);
+                    }
+                    for (nfds_t client = 1; client < MAX_CLIENTS; client++)
+                    {
+                        if (fds[client].fd == 0)
+                        {
+                            fds[client].fd = clientfd;
+                            fds[client].events = POLLIN;
+                            break;
+                        }
                     }
                 }
             }
             for (nfds_t client = 1; client < MAX_CLIENTS; client++)
             {
-                if (fds[client].revents & POLLIN)
+                if (fds[client].revents & (POLLIN | POLLOUT))
                 {
-                    if (!handler(fds[client].fd))
-                    {
-                        close(fds[client].fd);
-                        fds[client].fd = 0;
-                        fds[client].events = 0;
-                        fds[client].revents = 0;
-                    }
+                    conn_handle(&fds[client], &pool[client]);
                 }
             }
         }
