@@ -6,7 +6,6 @@
 #define SERVER_LISTEN 50
 
 #define BUFFER_SIZE 32768
-//#define BUFFER_SIZE 8
 
 struct poolfd
 {

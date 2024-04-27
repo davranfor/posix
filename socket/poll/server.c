@@ -47,11 +47,15 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
             }
             size += (size_t)bytes;
         }
-        if ((pool->data == NULL) && (size > 0) && (buffer[size - 1] == '\0'))
+        if (size == 0)
+        {
+            return;
+        }
+        if ((pool->data == NULL) && (buffer[size - 1] == '\0'))
         {
             data = buffer;
         }
-        else if (size > 0)
+        else
         {
             if (!pool_add(pool, buffer, size))
             {
@@ -68,20 +72,12 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
                 return;
             }
         }
-        else
-        {
-            return;
-        }
         fwrite(data, sizeof(char), size, stdout);
     }
-    else
+    else if (pool->data != NULL)
     {
-        if (pool->data != NULL)
-        {
-            data = pool->data + pool->sent;
-            size = pool->size - pool->sent;
-        }
-        conn->events &= ~POLLOUT;
+        data = pool->data + pool->sent;
+        size = pool->size - pool->sent;
     }
     if (data != NULL)
     {
@@ -107,6 +103,7 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
         if (sent == size)
         {
             pool_reset(pool);
+            conn->events &= ~POLLOUT;
         }
         else
         {
@@ -175,12 +172,14 @@ int main(void)
         exit(EXIT_FAILURE);
     }
     if (listen(serverfd, SERVER_LISTEN) == -1)
+    //if (listen(serverfd, 5) == -1)
     {
         perror("listen");
         exit(EXIT_FAILURE);
     }
 
     enum {MAX_CLIENTS = SERVER_LISTEN + 1};
+    //enum {MAX_CLIENTS = 5 + 1};
     struct poolfd pool[MAX_CLIENTS] = {0};
     struct pollfd fds[MAX_CLIENTS] = {0};
 

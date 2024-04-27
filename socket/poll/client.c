@@ -84,16 +84,18 @@ static void *handler(void *arg)
             {
                 data = buffer;
                 size = rcvd;
-                break;
             }
-            if (!pool_add(&pool, buffer, rcvd))
+            else
             {
-                perror("pool_add");
-                return 0;
+                if (!pool_add(&pool, buffer, rcvd))
+                {
+                    perror("pool_add");
+                    return 0;
+                }
+                data = pool.data;
+                size = pool.size;
+                rcvd = 0;
             }
-            data = pool.data;
-            size = pool.size;
-            rcvd = 0;
         }
         fwrite(data, sizeof(char), size, stdout);
         pool_reset(&pool);
