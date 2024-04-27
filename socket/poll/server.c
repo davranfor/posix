@@ -172,14 +172,12 @@ int main(void)
         exit(EXIT_FAILURE);
     }
     if (listen(serverfd, SERVER_LISTEN) == -1)
-    //if (listen(serverfd, 5) == -1)
     {
         perror("listen");
         exit(EXIT_FAILURE);
     }
 
     enum {MAX_CLIENTS = SERVER_LISTEN + 1};
-    //enum {MAX_CLIENTS = 5 + 1};
     struct poolfd pool[MAX_CLIENTS] = {0};
     struct pollfd fds[MAX_CLIENTS] = {0};
 
