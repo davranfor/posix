@@ -27,6 +27,10 @@ static void *handler(void *arg)
         perror("connect");
         exit(EXIT_FAILURE);
     }
+
+    char buffer[BUFFER_SIZE];
+    struct poolfd pool = {0};
+
     for (int i = 0; i < 100; i++)
     {
         char str[128];
@@ -43,17 +47,15 @@ static void *handler(void *arg)
             if (bytes == -1)
             {
                 perror("send");
-                return 0;
+                goto stop;
             }
             if (bytes == 0)
             {
-                return 0;
+                goto stop;
             }
             sent += (size_t)bytes;
         }
 
-        char buffer[BUFFER_SIZE];
-        struct poolfd pool = {0};
         char *data = NULL;
         size_t rcvd = 0;
         int done = 0;
@@ -67,11 +69,11 @@ static void *handler(void *arg)
                 if (bytes == -1)
                 {
                     perror("recv");
-                    return 0;
+                    goto stop;
                 }
                 if (bytes == 0)
                 {
-                    return 0;
+                    goto stop;
                 }
                 rcvd += (size_t)bytes;
                 if (buffer[rcvd - 1] == '\0')
@@ -90,7 +92,7 @@ static void *handler(void *arg)
                 if (!pool_add(&pool, buffer, rcvd))
                 {
                     perror("pool_add");
-                    return 0;
+                    goto stop;
                 }
                 data = pool.data;
                 size = pool.size;
@@ -100,7 +102,9 @@ static void *handler(void *arg)
         fwrite(data, sizeof(char), size, stdout);
         pool_reset(&pool);
     }
+stop:
     close(fd);
+    pool_reset(&pool);
     return NULL;
 }
 
@@ -113,7 +117,7 @@ int main(void)
     server.sin_addr.s_addr = inet_addr(SERVER_ADDR);
     server.sin_port = htons(SERVER_PORT);
 
-    enum {NTHREADS = SERVER_LISTEN};
+    enum {NTHREADS = MAX_CLIENTS};
     pthread_t thread[NTHREADS];
 
     for (int i = 0; i < NTHREADS; i++)

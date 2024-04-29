@@ -3,8 +3,7 @@
 
 #define SERVER_ADDR "127.0.0.1"
 #define SERVER_PORT 8888
-#define SERVER_LISTEN 50
-
+#define MAX_CLIENTS 50
 #define BUFFER_SIZE 32768
 
 struct poolfd

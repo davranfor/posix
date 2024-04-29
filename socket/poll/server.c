@@ -171,25 +171,25 @@ int main(void)
         perror("unblock");
         exit(EXIT_FAILURE);
     }
-    if (listen(serverfd, SERVER_LISTEN) == -1)
+    if (listen(serverfd, MAX_CLIENTS) == -1)
     {
         perror("listen");
         exit(EXIT_FAILURE);
     }
 
-    enum {MAX_CLIENTS = SERVER_LISTEN + 1};
-    struct poolfd pool[MAX_CLIENTS] = {0};
-    struct pollfd fds[MAX_CLIENTS] = {0};
+    enum {NCONNS = MAX_CLIENTS + 1};
+    struct poolfd pool[NCONNS] = {0};
+    struct pollfd conn[NCONNS] = {0};
 
-    fds[0].fd = serverfd;
-    fds[0].events = POLLIN;
-    for (nfds_t client = 1; client < MAX_CLIENTS; client++)
+    conn[0].fd = serverfd;
+    conn[0].events = POLLIN;
+    for (nfds_t client = 1; client < NCONNS; client++)
     {
-        fds[client].fd = -1;
+        conn[client].fd = -1;
     }
     while (1)
     {
-        int ready = poll(fds, MAX_CLIENTS, -1);
+        int ready = poll(conn, NCONNS, -1);
 
         if (ready == -1)
         {
@@ -198,7 +198,7 @@ int main(void)
         }
         if (ready > 0)
         {
-            if (fds[0].revents & POLLIN)
+            if (conn[0].revents & POLLIN)
             {
                 int clientfd = accept(serverfd, NULL, NULL);
 
@@ -217,22 +217,22 @@ int main(void)
                         perror("unblock");
                         exit(EXIT_FAILURE);
                     }
-                    for (nfds_t client = 1; client < MAX_CLIENTS; client++)
+                    for (nfds_t client = 1; client < NCONNS; client++)
                     {
-                        if (fds[client].fd == -1)
+                        if (conn[client].fd == -1)
                         {
-                            fds[client].fd = clientfd;
-                            fds[client].events = POLLIN;
+                            conn[client].fd = clientfd;
+                            conn[client].events = POLLIN;
                             break;
                         }
                     }
                 }
             }
-            for (nfds_t client = 1; client < MAX_CLIENTS; client++)
+            for (nfds_t client = 1; client < NCONNS; client++)
             {
-                if (fds[client].revents & (POLLIN | POLLOUT))
+                if (conn[client].revents & (POLLIN | POLLOUT))
                 {
-                    conn_handle(&fds[client], &pool[client]);
+                    conn_handle(&conn[client], &pool[client]);
                 }
             }
         }
