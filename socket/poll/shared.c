@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include "shared.h"
 
 int pool_add(struct poolfd *pool, const char *data, size_t size)
@@ -27,5 +28,16 @@ void pool_reset(struct poolfd *pool)
     pool->data = NULL;
     pool->size = 0;
     pool->sent = 0;
+}
+
+int unblock(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+
+    if (flags == -1)
+    {
+        return -1;
+    }
+    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 

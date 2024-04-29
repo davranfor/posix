@@ -7,31 +7,21 @@
 #include <sys/poll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <fcntl.h>
 #include <errno.h>
 #include "shared.h"
 
+#define BACKLOG 64
+
 static char buffer[BUFFER_SIZE];
 
-static int unblock(int fd)
-{
-    int flags = fcntl(fd, F_GETFL, 0);
-
-    if (flags == -1)
-    {
-        return -1;
-    }
-    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-}
-
-static int sock_get(void)
+static int sock_get(uint16_t port)
 {
     struct sockaddr_in server;
 
     memset(&server, 0, sizeof server);
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = htonl(INADDR_ANY);
-    server.sin_port = htons(SERVER_PORT);
+    server.sin_port = htons(port);
 
     int fd, opt = 1;
 
@@ -50,14 +40,14 @@ static int sock_get(void)
         perror("bind");
         exit(EXIT_FAILURE);
     }
+    if (listen(fd, BACKLOG) == -1)
+    {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
     if (unblock(fd) == -1)
     {
         perror("unblock");
-        exit(EXIT_FAILURE);
-    }
-    if (listen(fd, 128) == -1)
-    {
-        perror("listen");
         exit(EXIT_FAILURE);
     }
     return fd;
@@ -178,13 +168,27 @@ stop:
     pool_reset(pool);
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    uint16_t port = SERVER_PORT;
+
+    if (argc > 1)
+    {
+        char *end;
+
+        port = (uint16_t)strtoul(argv[1], &end, 10);
+        if ((port == 0) || (*end != '\0'))
+        {
+            fprintf(stderr, "Usage %s <port>\n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
     enum {server = 0, maxfds = MAX_CLIENTS + 1};
     struct poolfd pool[maxfds] = {0};
     struct pollfd conn[maxfds] = {0};
 
-    conn[server].fd = sock_get();
+    conn[server].fd = sock_get(port);
     conn[server].events = POLLIN;
     for (nfds_t client = 1; client < maxfds; client++)
     {

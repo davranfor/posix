@@ -2,8 +2,8 @@
 #define SHARED_H
 
 #define SERVER_ADDR "127.0.0.1"
-#define SERVER_PORT 8888
-#define MAX_CLIENTS 50
+#define SERVER_PORT 1234 
+#define MAX_CLIENTS 64
 #define BUFFER_SIZE 32768
 
 struct poolfd
@@ -15,6 +15,8 @@ struct poolfd
 int pool_add(struct poolfd *, const char *, size_t);
 void pool_sync(struct poolfd *, size_t);
 void pool_reset(struct poolfd *);
+
+int unblock(int);
 
 #endif
 

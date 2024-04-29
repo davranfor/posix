@@ -31,7 +31,7 @@ static void *handler(void *arg)
     char buffer[BUFFER_SIZE];
     struct poolfd pool = {0};
 
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < 50; i++)
     {
         char str[128];
 
@@ -108,19 +108,37 @@ stop:
     return NULL;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
+    const char *addr = SERVER_ADDR;
+    uint16_t port = SERVER_PORT;
+
+    if (argc > 1)
+    {
+        addr = argv[1];
+    }
+    if (argc > 2)
+    {
+        char *end;
+
+        port = (uint16_t)strtoul(argv[2], &end, 10);
+        if ((port == 0) || (*end != '\0'))
+        {
+            fprintf(stderr, "Usage %s <addr> <port>\n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+
     struct sockaddr_in server;
 
     memset(&server, 0, sizeof server);
     server.sin_family = AF_INET;
-    server.sin_addr.s_addr = inet_addr(SERVER_ADDR);
-    server.sin_port = htons(SERVER_PORT);
+    server.sin_addr.s_addr = inet_addr(addr);
+    server.sin_port = htons(port);
 
-    enum {NTHREADS = MAX_CLIENTS};
-    pthread_t thread[NTHREADS];
+    pthread_t thread[MAX_CLIENTS];
 
-    for (int i = 0; i < NTHREADS; i++)
+    for (int i = 0; i < MAX_CLIENTS; i++)
     {
         if (pthread_create(&thread[i], NULL, handler, &server) != 0)
         {
@@ -128,7 +146,7 @@ int main(void)
             exit(EXIT_FAILURE);
         }
     }
-    for (int i = 0; i < NTHREADS; i++)
+    for (int i = 0; i < MAX_CLIENTS; i++)
     {
         if (pthread_join(thread[i], NULL) != 0)
         {
@@ -136,7 +154,6 @@ int main(void)
             exit(EXIT_FAILURE);
         }
     }
-    puts("Client exits");
     return 0;
 }
 
