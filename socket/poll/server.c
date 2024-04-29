@@ -13,6 +13,56 @@
 
 static char buffer[BUFFER_SIZE];
 
+static int unblock(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+
+    if (flags == -1)
+    {
+        return -1;
+    }
+    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+static int sock_get(void)
+{
+    struct sockaddr_in server;
+
+    memset(&server, 0, sizeof server);
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = htonl(INADDR_ANY);
+    server.sin_port = htons(SERVER_PORT);
+
+    int fd, opt = 1;
+
+    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt) == -1)
+    {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+    if (bind(fd, (struct sockaddr *)&server, sizeof server) == -1)
+    {
+        perror("bind");
+        exit(EXIT_FAILURE);
+    }
+    if (unblock(fd) == -1)
+    {
+        perror("unblock");
+        exit(EXIT_FAILURE);
+    }
+    if (listen(fd, 128) == -1)
+    {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
+    return fd;
+}
+
 static void conn_close(struct pollfd *conn)
 {
     close(conn->fd);
@@ -124,81 +174,34 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
         return;
     }
 stop:
-    printf("Closing %d ...\n", conn->fd);
     conn_close(conn);
     pool_reset(pool);
 }
 
-static int unblock(int fd)
-{
-    int flags = fcntl(fd, F_GETFL, 0);
-
-    if (flags == -1)
-    {
-        return -1;
-    }
-    return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-}
-
 int main(void)
 {
-    struct sockaddr_in server;
+    enum {server = 0, maxfds = MAX_CLIENTS + 1};
+    struct poolfd pool[maxfds] = {0};
+    struct pollfd conn[maxfds] = {0};
 
-    memset(&server, 0, sizeof server);
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = htonl(INADDR_ANY);
-    server.sin_port = htons(SERVER_PORT);
-
-    int serverfd, opt = 1;
-
-    if ((serverfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-    {
-        perror("socket");
-        exit(EXIT_FAILURE);
-    }
-    if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt) == -1)
-    {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
-    if (bind(serverfd, (struct sockaddr *)&server, sizeof server) == -1)
-    {
-        perror("bind");
-        exit(EXIT_FAILURE);
-    }
-    if (unblock(serverfd) == -1)
-    {
-        perror("unblock");
-        exit(EXIT_FAILURE);
-    }
-    if (listen(serverfd, 128) == -1)
-    {
-        perror("listen");
-        exit(EXIT_FAILURE);
-    }
-
-    enum {NCONNS = MAX_CLIENTS + 1};
-    struct poolfd pool[NCONNS] = {0};
-    struct pollfd conn[NCONNS] = {0};
-
-    conn[0].fd = serverfd;
-    conn[0].events = POLLIN;
-    for (nfds_t client = 1; client < NCONNS; client++)
+    conn[server].fd = sock_get();
+    conn[server].events = POLLIN;
+    for (nfds_t client = 1; client < maxfds; client++)
     {
         conn[client].fd = -1;
     }
     while (1)
     {
-        if (poll(conn, NCONNS, -1) == -1)
+        if (poll(conn, maxfds, -1) == -1)
         {
             perror("poll");
             exit(EXIT_FAILURE);
         }
-        if (conn[0].revents & POLLIN)
+        if (conn[server].revents & POLLIN)
         {
-            int clientfd = accept(serverfd, NULL, NULL);
+            int fd = accept(conn[server].fd, NULL, NULL);
 
-            if (clientfd == -1)
+            if (fd == -1)
             {
                 if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
                 {
@@ -210,16 +213,16 @@ int main(void)
             {
                 int done = 0;
 
-                for (nfds_t client = 1; client < NCONNS; client++)
+                for (nfds_t client = 1; client < maxfds; client++)
                 {
                     if (conn[client].fd == -1)
                     {
-                        if (unblock(clientfd) == -1)
+                        if (unblock(fd) == -1)
                         {
                             perror("unblock");
                             exit(EXIT_FAILURE);
                         }
-                        conn[client].fd = clientfd;
+                        conn[client].fd = fd;
                         conn[client].events = POLLIN;
                         done = 1;
                         break;
@@ -227,11 +230,11 @@ int main(void)
                 }
                 if (!done)
                 {
-                    close(clientfd);
+                    close(fd);
                 }
             }
         }
-        for (nfds_t client = 1; client < NCONNS; client++)
+        for (nfds_t client = 1; client < maxfds; client++)
         {
             if (conn[client].revents & (POLLIN | POLLOUT))
             {
@@ -240,8 +243,7 @@ int main(void)
         }
     }
     // Never reached
-    close(serverfd);
-    puts("Server exits");
+    close(conn[server].fd);
     return 0;
 }
 
