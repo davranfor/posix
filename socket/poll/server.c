@@ -149,14 +149,14 @@ int main(void)
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(SERVER_PORT);
 
-    int serverfd, yes = 1;
+    int serverfd, opt = 1;
 
     if ((serverfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         perror("socket");
         exit(EXIT_FAILURE);
     }
-    if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1)
+    if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt) == -1)
     {
         perror("setsockopt");
         exit(EXIT_FAILURE);
@@ -171,7 +171,7 @@ int main(void)
         perror("unblock");
         exit(EXIT_FAILURE);
     }
-    if (listen(serverfd, MAX_CLIENTS) == -1)
+    if (listen(serverfd, 128) == -1)
     {
         perror("listen");
         exit(EXIT_FAILURE);
@@ -189,51 +189,53 @@ int main(void)
     }
     while (1)
     {
-        int ready = poll(conn, NCONNS, -1);
-
-        if (ready == -1)
+        if (poll(conn, NCONNS, -1) == -1)
         {
             perror("poll");
             exit(EXIT_FAILURE);
         }
-        if (ready > 0)
+        if (conn[0].revents & POLLIN)
         {
-            if (conn[0].revents & POLLIN)
-            {
-                int clientfd = accept(serverfd, NULL, NULL);
+            int clientfd = accept(serverfd, NULL, NULL);
 
-                if (clientfd == -1)
+            if (clientfd == -1)
+            {
+                if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
                 {
-                    if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
-                    {
-                        perror("accept");
-                        exit(EXIT_FAILURE);
-                    }
-                }
-                else
-                {
-                    if (unblock(clientfd) == -1)
-                    {
-                        perror("unblock");
-                        exit(EXIT_FAILURE);
-                    }
-                    for (nfds_t client = 1; client < NCONNS; client++)
-                    {
-                        if (conn[client].fd == -1)
-                        {
-                            conn[client].fd = clientfd;
-                            conn[client].events = POLLIN;
-                            break;
-                        }
-                    }
+                    perror("accept");
+                    exit(EXIT_FAILURE);
                 }
             }
-            for (nfds_t client = 1; client < NCONNS; client++)
+            else
             {
-                if (conn[client].revents & (POLLIN | POLLOUT))
+                int done = 0;
+
+                for (nfds_t client = 1; client < NCONNS; client++)
                 {
-                    conn_handle(&conn[client], &pool[client]);
+                    if (conn[client].fd == -1)
+                    {
+                        if (unblock(clientfd) == -1)
+                        {
+                            perror("unblock");
+                            exit(EXIT_FAILURE);
+                        }
+                        conn[client].fd = clientfd;
+                        conn[client].events = POLLIN;
+                        done = 1;
+                        break;
+                    }
                 }
+                if (!done)
+                {
+                    close(clientfd);
+                }
+            }
+        }
+        for (nfds_t client = 1; client < NCONNS; client++)
+        {
+            if (conn[client].revents & (POLLIN | POLLOUT))
+            {
+                conn_handle(&conn[client], &pool[client]);
             }
         }
     }
