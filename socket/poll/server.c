@@ -16,7 +16,7 @@ static char buffer[BUFFER_SIZE];
 static void conn_close(struct pollfd *conn)
 {
     close(conn->fd);
-    conn->fd = 0;
+    conn->fd = -1;
     conn->events = 0;
     conn->revents = 0;
 }
@@ -183,6 +183,10 @@ int main(void)
 
     fds[0].fd = serverfd;
     fds[0].events = POLLIN;
+    for (nfds_t client = 1; client < MAX_CLIENTS; client++)
+    {
+        fds[client].fd = -1;
+    }
     while (1)
     {
         int ready = poll(fds, MAX_CLIENTS, -1);
@@ -215,7 +219,7 @@ int main(void)
                     }
                     for (nfds_t client = 1; client < MAX_CLIENTS; client++)
                     {
-                        if (fds[client].fd == 0)
+                        if (fds[client].fd == -1)
                         {
                             fds[client].fd = clientfd;
                             fds[client].events = POLLIN;
