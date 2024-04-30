@@ -66,7 +66,11 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
     size_t size = 0, sent = 0;
     char *data = NULL;
 
-    if (!(conn->revents & POLLOUT))
+    if (conn->revents & ~(POLLIN | POLLOUT))
+    {
+        goto stop;
+    }
+    if (conn->revents == POLLIN)
     {
         while (size < BUFFER_SIZE)
         {
@@ -240,7 +244,7 @@ int main(int argc, char *argv[])
         }
         for (nfds_t client = 1; client < maxfds; client++)
         {
-            if (conn[client].revents & (POLLIN | POLLOUT))
+            if (conn[client].revents)
             {
                 conn_handle(&conn[client], &pool[client]);
             }
