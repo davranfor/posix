@@ -63,8 +63,8 @@ static void conn_close(struct pollfd *conn)
 
 static void conn_handle(struct pollfd *conn, struct poolfd *pool)
 {
-    size_t size = 0, sent = 0;
     char *data = NULL;
+    size_t size = 0;
 
     if (conn->revents & ~(POLLIN | POLLOUT))
     {
@@ -125,6 +125,8 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
     }
     if (data != NULL)
     {
+        size_t sent = 0;
+
         while (sent < size)
         {
             ssize_t bytes = send(conn->fd, data + sent, size - sent, 0);
