@@ -35,6 +35,11 @@ static int sock_get(uint16_t port)
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
+    if (unblock(fd) == -1)
+    {
+        perror("unblock");
+        exit(EXIT_FAILURE);
+    }
     if (bind(fd, (struct sockaddr *)&server, sizeof server) == -1)
     {
         perror("bind");
@@ -43,11 +48,6 @@ static int sock_get(uint16_t port)
     if (listen(fd, BACKLOG) == -1)
     {
         perror("listen");
-        exit(EXIT_FAILURE);
-    }
-    if (unblock(fd) == -1)
-    {
-        perror("unblock");
         exit(EXIT_FAILURE);
     }
     return fd;
