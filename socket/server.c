@@ -72,29 +72,22 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
     }
     if (conn->revents == POLLIN)
     {
-        while (size < BUFFER_SIZE)
-        {
-            ssize_t bytes = recv(conn->fd, buffer + size, BUFFER_SIZE - size, 0);
+        ssize_t bytes = recv(conn->fd, buffer, BUFFER_SIZE, 0);
 
-            if (bytes == -1)
-            {
-                if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-                {
-                    break;
-                }
-                perror("recv");
-                goto stop;
-            }
-            if (bytes == 0)
-            {
-                goto stop;
-            }
-            size += (size_t)bytes;
-        }
-        if (size == 0)
+        if (bytes == -1)
         {
-            return;
+            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+            {
+                return;
+            }
+            perror("recv");
+            goto stop;
         }
+        if (bytes == 0)
+        {
+            goto stop;
+        }
+        size = (size_t)bytes;
         if ((pool->data == NULL) && (buffer[size - 1] == '\0'))
         {
             data = buffer;
@@ -125,27 +118,24 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
     }
     if (data != NULL)
     {
-        size_t sent = 0;
+        ssize_t bytes = send(conn->fd, data, size, 0);
 
-        while (sent < size)
+        if (bytes == 0)
         {
-            ssize_t bytes = send(conn->fd, data + sent, size - sent, 0);
-
-            if (bytes == -1)
+            goto stop;
+        }
+        if (bytes == -1)
+        {
+            if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
             {
-                if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
-                {
-                    break;
-                }
                 perror("send");
                 goto stop;
             }
-            if (bytes == 0)
-            {
-                goto stop;
-            }
-            sent += (size_t)bytes;
+            bytes = 0;
         }
+
+        size_t sent = (size_t)bytes;
+
         if (sent == size)
         {
             pool_reset(pool);
