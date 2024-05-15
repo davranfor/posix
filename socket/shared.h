@@ -3,7 +3,7 @@
 
 #define SERVER_ADDR "127.0.0.1"
 #define SERVER_PORT 1234 
-#define MAX_CLIENTS 64
+#define MAX_CLIENTS 10
 #define BUFFER_SIZE 32768
 
 struct poolfd

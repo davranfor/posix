@@ -14,7 +14,7 @@
 
 static char buffer[BUFFER_SIZE];
 
-static int sock_get(uint16_t port)
+static int conn_socket(uint16_t port)
 {
     struct sockaddr_in server;
 
@@ -35,11 +35,6 @@ static int sock_get(uint16_t port)
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
-    if (unblock(fd) == -1)
-    {
-        perror("unblock");
-        exit(EXIT_FAILURE);
-    }
     if (bind(fd, (struct sockaddr *)&server, sizeof server) == -1)
     {
         perror("bind");
@@ -51,6 +46,17 @@ static int sock_get(uint16_t port)
         exit(EXIT_FAILURE);
     }
     return fd;
+}
+
+static void conn_attach(struct pollfd *conn, int fd)
+{
+    if (unblock(fd) == -1)
+    {
+        perror("unblock");
+        exit(EXIT_FAILURE);
+    }
+    conn->fd = fd;
+    conn->events = POLLIN;
 }
 
 static void conn_close(struct pollfd *conn)
@@ -184,8 +190,7 @@ int main(int argc, char *argv[])
     struct poolfd pool[maxfds] = {0};
     struct pollfd conn[maxfds] = {0};
 
-    conn[server].fd = sock_get(port);
-    conn[server].events = POLLIN;
+    conn_attach(&conn[server], conn_socket(port));
     for (nfds_t client = 1; client < maxfds; client++)
     {
         conn[client].fd = -1;
@@ -217,13 +222,7 @@ int main(int argc, char *argv[])
                 {
                     if (conn[client].fd == -1)
                     {
-                        if (unblock(fd) == -1)
-                        {
-                            perror("unblock");
-                            exit(EXIT_FAILURE);
-                        }
-                        conn[client].fd = fd;
-                        conn[client].events = POLLIN;
+                        conn_attach(&conn[client], fd);
                         done = 1;
                         break;
                     }
@@ -243,7 +242,7 @@ int main(int argc, char *argv[])
         }
     }
     // Never reached
-    close(conn[server].fd);
+    conn_close(&conn[server]);
     return 0;
 }
 
