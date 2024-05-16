@@ -35,6 +35,11 @@ static int conn_socket(uint16_t port)
         perror("setsockopt");
         exit(EXIT_FAILURE);
     }
+    if (unblock(fd) == -1)
+    {
+        perror("unblock");
+        exit(EXIT_FAILURE);
+    }
     if (bind(fd, (struct sockaddr *)&server, sizeof server) == -1)
     {
         perror("bind");
@@ -50,11 +55,6 @@ static int conn_socket(uint16_t port)
 
 static void conn_attach(struct pollfd *conn, int fd)
 {
-    if (unblock(fd) == -1)
-    {
-        perror("unblock");
-        exit(EXIT_FAILURE);
-    }
     conn->fd = fd;
     conn->events = POLLIN;
 }
@@ -222,6 +222,11 @@ int main(int argc, char *argv[])
                 {
                     if (conn[client].fd == -1)
                     {
+                        if (unblock(fd) == -1)
+                        {
+                            perror("unblock");
+                            exit(EXIT_FAILURE);
+                        }
                         conn_attach(&conn[client], fd);
                         done = 1;
                         break;
