@@ -64,7 +64,6 @@ static void conn_close(struct pollfd *conn)
     close(conn->fd);
     conn->fd = -1;
     conn->events = 0;
-    conn->revents = 0;
 }
 
 static void conn_handle(struct pollfd *conn, struct poolfd *pool)
