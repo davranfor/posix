@@ -170,22 +170,8 @@ stop:
     pool_reset(pool);
 }
 
-int main(int argc, char *argv[])
+static void conn_loop(uint16_t port)
 {
-    uint16_t port = SERVER_PORT;
-
-    if (argc > 1)
-    {
-        char *end;
-
-        port = (uint16_t)strtoul(argv[1], &end, 10);
-        if ((port == 0) || (*end != '\0'))
-        {
-            fprintf(stderr, "Usage %s <port>\n", argv[0]);
-            exit(EXIT_FAILURE);
-        }
-    }
-
     enum {server = 0, maxfds = MAX_CLIENTS + 1};
     struct poolfd pool[maxfds] = {0};
     struct pollfd conn[maxfds] = {0};
@@ -248,6 +234,24 @@ int main(int argc, char *argv[])
     }
     // Never reached
     conn_close(&conn[server]);
+}
+
+int main(int argc, char *argv[])
+{
+    uint16_t port = SERVER_PORT;
+
+    if (argc > 1)
+    {
+        char *end;
+
+        port = (uint16_t)strtoul(argv[1], &end, 10);
+        if ((port == 0) || (*end != '\0'))
+        {
+            fprintf(stderr, "Usage %s <port>\n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
+    }
+    conn_loop(port);
     return 0;
 }
 
