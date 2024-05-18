@@ -22,6 +22,7 @@ static void *handler(void *arg)
         perror("socket");
         exit(EXIT_FAILURE);
     }
+
     if (connect(fd, (struct sockaddr *)server, sizeof *server) == -1)
     {
         perror("connect");
@@ -110,31 +111,34 @@ stop:
 
 int main(int argc, char *argv[])
 {
-    const char *addr = SERVER_ADDR;
-    uint16_t port = SERVER_PORT;
-
-    if (argc > 1)
-    {
-        addr = argv[1];
-    }
-    if (argc > 2)
-    {
-        char *end;
-
-        port = (uint16_t)strtoul(argv[2], &end, 10);
-        if ((port == 0) || (*end != '\0'))
-        {
-            fprintf(stderr, "Usage %s <addr> <port>\n", argv[0]);
-            exit(EXIT_FAILURE);
-        }
-    }
-
     struct sockaddr_in server;
 
     memset(&server, 0, sizeof server);
     server.sin_family = AF_INET;
-    server.sin_addr.s_addr = inet_addr(addr);
-    server.sin_port = htons(port);
+
+    const char *addr = argc > 1 ? argv[1] : SERVER_ADDR;
+ 
+    if (inet_pton(AF_INET, addr, &server.sin_addr) <= 0)
+    {
+        fprintf(stderr, "Invalid address '%s'\n", addr);
+        exit(EXIT_FAILURE);
+    }
+    if (argc > 2)
+    {
+        char *end;
+        unsigned long port = strtoul(argv[2], &end, 10);
+
+        if ((*end != '\0') || (port < 1) || (port > 65535))
+        {
+            fprintf(stderr, "Invalid port '%s'\n", argv[2]);
+            exit(EXIT_FAILURE);
+        }
+        server.sin_port = htons((uint16_t)port);
+    }
+    else
+    {
+        server.sin_port = htons(SERVER_PORT);
+    }
 
     pthread_t thread[MAX_CLIENTS];
 

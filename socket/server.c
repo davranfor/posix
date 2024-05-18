@@ -242,13 +242,14 @@ int main(int argc, char *argv[])
     if (argc > 1)
     {
         char *end;
+        unsigned long num = strtoul(argv[1], &end, 10);
 
-        port = (uint16_t)strtoul(argv[1], &end, 10);
-        if ((port == 0) || (*end != '\0'))
+        if ((*end != '\0') || (num < 1) || (num > 65535))
         {
             fprintf(stderr, "Usage %s <port>\n", argv[0]);
             exit(EXIT_FAILURE);
         }
+        port = (uint16_t)num;
     }
     conn_loop(port);
     return 0;
