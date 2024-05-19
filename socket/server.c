@@ -72,103 +72,123 @@ static void conn_reset(struct pollfd *conn)
     conn->events = 0;
 }
 
+static ssize_t conn_recv(struct pollfd *conn, struct poolfd *pool)
+{
+    ssize_t bytes = recv(conn->fd, buffer, BUFFER_SIZE, 0);
+
+    if (bytes == -1)
+    {
+        if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+        {
+            return -1;
+        }
+        perror("recv");
+        return 0;
+    }
+    if (bytes == 0)
+    {
+        return 0;
+    }
+
+    size_t size = (size_t)bytes;
+
+    if ((pool->data == NULL) && (buffer[size - 1] == '\0'))
+    {
+        pool_set(pool, buffer, size);
+    }
+    else
+    {
+        if (!pool_add(pool, buffer, size))
+        {
+            perror("pool_add");
+            return 0;
+        }
+        if (buffer[size - 1] != '\0')
+        {
+            return -1;
+        }
+    }
+    return bytes;
+}
+
+static ssize_t conn_send(struct pollfd *conn, struct poolfd *pool)
+{
+    char *data = pool->data + pool->sent;
+    size_t size = pool->size - pool->sent;
+    ssize_t bytes = send(conn->fd, data, size, 0);
+
+    if (bytes == 0)
+    {
+        return 0;
+    }
+    if (bytes == -1)
+    {
+        if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
+        {
+            perror("send");
+            return 0;
+        }
+        bytes = 0;
+    }
+
+    size_t sent = (size_t)bytes;
+
+    if (sent == size)
+    {
+        return bytes;
+    }
+    if (pool->type == POOL_BUFFERED)
+    {
+        if (!pool_add(pool, data + sent, size - sent))
+        {
+            perror("pool_add");
+            return 0;
+        }
+    }
+    else
+    {
+        pool_sync(pool, sent);
+    }
+    return -1;
+}
+
 static void conn_handle(struct pollfd *conn, struct poolfd *pool)
 {
-    char *data = NULL;
-    size_t size = 0;
-
-    if (conn->revents & ~(POLLIN | POLLOUT))
+    if (!(conn->revents & ~(POLLIN | POLLOUT)))
     {
-        goto reset;
-    }
-    if (conn->revents == POLLIN)
-    {
-        ssize_t bytes = recv(conn->fd, buffer, BUFFER_SIZE, 0);
-
-        if (bytes == -1)
+        if (conn->revents == POLLIN)
         {
-            if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+            ssize_t rcvd = conn_recv(conn, pool);
+
+            if (rcvd == 0)
+            {
+                goto reset;
+            }
+            if (rcvd == -1)
             {
                 return;
             }
-            perror("recv");
-            goto reset;
+            fwrite(pool->data, sizeof(char), pool->size, stdout);
         }
-        if (bytes == 0)
+        if (pool->data != NULL)
         {
-            goto reset;
-        }
-        size = (size_t)bytes;
-        if ((pool->data == NULL) && (buffer[size - 1] == '\0'))
-        {
-            data = buffer;
-        }
-        else
-        {
-            if (!pool_add(pool, buffer, size))
+            ssize_t sent = conn_send(conn, pool);
+
+            if (sent == 0)
             {
-                perror("pool_add");
                 goto reset;
             }
-            if (buffer[size - 1] == '\0')
+            if (sent == -1)
             {
-                data = pool->data;
-                size = pool->size;
+                conn->events |= POLLOUT;
             }
             else
             {
-                return;
+                conn->events &= ~POLLOUT;
+                pool_reset(pool);
             }
+            return;
         }
-        fwrite(data, sizeof(char), size, stdout);
-    }
-    else if (pool->data != NULL)
-    {
-        data = pool->data + pool->sent;
-        size = pool->size - pool->sent;
-    }
-    if (data != NULL)
-    {
-        ssize_t bytes = send(conn->fd, data, size, 0);
-
-        if (bytes == 0)
-        {
-            goto reset;
-        }
-        if (bytes == -1)
-        {
-            if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
-            {
-                perror("send");
-                goto reset;
-            }
-            bytes = 0;
-        }
-
-        size_t sent = (size_t)bytes;
-
-        if (sent == size)
-        {
-            pool_reset(pool);
-            conn->events &= ~POLLOUT;
-        }
-        else
-        {
-            if (pool->data == NULL)
-            {
-                if (!pool_add(pool, data + sent, size - sent))
-                {
-                    perror("pool_add");
-                    goto reset;
-                }
-            }
-            else
-            {
-                pool_sync(pool, sent);
-            }
-            conn->events |= POLLOUT;
-        }
-        return;
     }
 reset:
     conn_reset(conn);
