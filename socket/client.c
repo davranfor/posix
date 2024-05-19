@@ -104,8 +104,8 @@ static void *handler(void *arg)
         pool_reset(&pool);
     }
 stop:
-    close(fd);
     pool_reset(&pool);
+    close(fd);
     return NULL;
 }
 

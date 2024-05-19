@@ -65,7 +65,7 @@ static void conn_attach(struct pollfd *conn, int fd)
     conn->events = POLLIN;
 }
 
-static void conn_close(struct pollfd *conn)
+static void conn_reset(struct pollfd *conn)
 {
     close(conn->fd);
     conn->fd = -1;
@@ -79,7 +79,7 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
 
     if (conn->revents & ~(POLLIN | POLLOUT))
     {
-        goto stop;
+        goto reset;
     }
     if (conn->revents == POLLIN)
     {
@@ -92,11 +92,11 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
                 return;
             }
             perror("recv");
-            goto stop;
+            goto reset;
         }
         if (bytes == 0)
         {
-            goto stop;
+            goto reset;
         }
         size = (size_t)bytes;
         if ((pool->data == NULL) && (buffer[size - 1] == '\0'))
@@ -108,7 +108,7 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
             if (!pool_add(pool, buffer, size))
             {
                 perror("pool_add");
-                goto stop;
+                goto reset;
             }
             if (buffer[size - 1] == '\0')
             {
@@ -133,14 +133,14 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
 
         if (bytes == 0)
         {
-            goto stop;
+            goto reset;
         }
         if (bytes == -1)
         {
             if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
             {
                 perror("send");
-                goto stop;
+                goto reset;
             }
             bytes = 0;
         }
@@ -159,7 +159,7 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
                 if (!pool_add(pool, data + sent, size - sent))
                 {
                     perror("pool_add");
-                    goto stop;
+                    goto reset;
                 }
             }
             else
@@ -170,8 +170,14 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
         }
         return;
     }
-stop:
-    conn_close(conn);
+reset:
+    conn_reset(conn);
+    pool_reset(pool);
+}
+
+static void conn_close(struct pollfd *conn, struct poolfd *pool)
+{
+    conn_reset(conn);
     pool_reset(pool);
 }
 
@@ -207,7 +213,7 @@ static void conn_loop(uint16_t port)
                 if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
                 {
                     perror("accept");
-                    exit(EXIT_FAILURE);
+                    break;
                 }
             }
             else
@@ -221,7 +227,7 @@ static void conn_loop(uint16_t port)
                         if (unblock(fd) == -1)
                         {
                             perror("unblock");
-                            exit(EXIT_FAILURE);
+                            break;
                         }
                         conn_attach(&conn[client], fd);
                         done = 1;
@@ -246,8 +252,7 @@ static void conn_loop(uint16_t port)
     {
         if (conn[fd].fd != -1)
         {
-            conn_close(&conn[fd]);
-            pool_reset(&pool[fd]);
+            conn_close(&conn[fd], &pool[fd]);
         }
     }
 }
