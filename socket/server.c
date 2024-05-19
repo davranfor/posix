@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -51,6 +52,11 @@ static int conn_socket(uint16_t port)
         exit(EXIT_FAILURE);
     }
     return fd;
+}
+
+static void conn_signal(int signum)
+{
+    printf("\nCaught signal %d (SIGINT)\n", signum);
 }
 
 static void conn_attach(struct pollfd *conn, int fd)
@@ -180,12 +186,17 @@ static void conn_loop(uint16_t port)
     {
         conn[client].fd = -1;
     }
+    if (signal(SIGINT, conn_signal) == SIG_ERR)
+    {
+        perror("signal");
+        exit(EXIT_FAILURE);
+    }
     while (1)
     {
         if (poll(conn, maxfds, -1) == -1)
         {
             perror("poll");
-            exit(EXIT_FAILURE);
+            break;
         }
         if (conn[server].revents & POLLIN)
         {
@@ -231,8 +242,14 @@ static void conn_loop(uint16_t port)
             }
         }
     }
-    // Never reached
-    conn_close(&conn[server]);
+    for (nfds_t fd = 0; fd < maxfds; fd++)
+    {
+        if (conn[fd].fd != -1)
+        {
+            conn_close(&conn[fd]);
+            pool_reset(&pool[fd]);
+        }
+    }
 }
 
 int main(int argc, char *argv[])
