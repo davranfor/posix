@@ -76,6 +76,10 @@ static ssize_t conn_recv(struct pollfd *conn, struct poolfd *pool)
 {
     ssize_t bytes = recv(conn->fd, buffer, BUFFER_SIZE, 0);
 
+    if (bytes == 0)
+    {
+        return 0;
+    }
     if (bytes == -1)
     {
         if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
@@ -83,10 +87,6 @@ static ssize_t conn_recv(struct pollfd *conn, struct poolfd *pool)
             return -1;
         }
         perror("recv");
-        return 0;
-    }
-    if (bytes == 0)
-    {
         return 0;
     }
 
@@ -158,36 +158,31 @@ static void conn_handle(struct pollfd *conn, struct poolfd *pool)
     {
         if (conn->revents == POLLIN)
         {
-            ssize_t rcvd = conn_recv(conn, pool);
-
-            if (rcvd == 0)
+            switch (conn_recv(conn, pool))
             {
-                goto reset;
+                case 0:
+                    goto reset;
+                case -1:
+                    return;
+                default:
+                    fwrite(pool->data, sizeof(char), pool->size, stdout);
+                    break;
             }
-            if (rcvd == -1)
-            {
-                return;
-            }
-            fwrite(pool->data, sizeof(char), pool->size, stdout);
         }
         if (pool->data != NULL)
         {
-            ssize_t sent = conn_send(conn, pool);
-
-            if (sent == 0)
+            switch (conn_send(conn, pool))
             {
-                goto reset;
+                case 0:
+                    goto reset;
+                case -1:
+                    conn->events |= POLLOUT;
+                    return;
+                default:
+                    conn->events &= ~POLLOUT;
+                    pool_reset(pool);
+                    return;
             }
-            if (sent == -1)
-            {
-                conn->events |= POLLOUT;
-            }
-            else
-            {
-                conn->events &= ~POLLOUT;
-                pool_reset(pool);
-            }
-            return;
         }
     }
 reset:
