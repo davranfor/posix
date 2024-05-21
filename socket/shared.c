@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -59,7 +58,7 @@ unsigned short string_to_ushort(const char *str)
     char *end;
 
     result = strtoul(str, &end, 10);
-    if ((result > 65536) || (end[strspn(end, " \f\n\r\t\v")] != '\0'))
+    if ((result > 65535) || (end[strspn(end, " \f\n\r\t\v")] != '\0'))
     {
         return 0;
     }
