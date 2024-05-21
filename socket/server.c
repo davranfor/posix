@@ -56,7 +56,7 @@ static int conn_socket(uint16_t port)
 
 static void conn_signal(int signum)
 {
-    printf("\nCaught signal %d (SIGINT)\n", signum);
+    fprintf(stderr, "\nCaught signal %d (SIGINT)\n", signum);
 }
 
 static void conn_attach(struct pollfd *conn, int fd)
