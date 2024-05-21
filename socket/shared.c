@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -50,6 +51,19 @@ void pool_reset(struct poolfd *pool)
     pool->size = 0;
     pool->sent = 0;
     pool->type = 0;
+}
+
+unsigned short string_to_ushort(const char *str)
+{
+    unsigned long result = 0;
+    char *end;
+
+    result = strtoul(str, &end, 10);
+    if ((result > 65536) || (end[strspn(end, " \f\n\r\t\v")] != '\0'))
+    {
+        return 0;
+    }
+    return (unsigned short)result;
 }
 
 int unblock(int fd)

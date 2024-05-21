@@ -111,6 +111,12 @@ stop:
 
 int main(int argc, char *argv[])
 {
+    if ((argc == 2) && (strcmp(argv[1], "-h") == 0))
+    {
+        printf("Usage: %s [address] [port]\n", argv[0]);
+        return 0;
+    }
+
     struct sockaddr_in server;
 
     memset(&server, 0, sizeof server);
@@ -120,25 +126,18 @@ int main(int argc, char *argv[])
  
     if (inet_pton(AF_INET, addr, &server.sin_addr) <= 0)
     {
-        fprintf(stderr, "Invalid address '%s'\n", addr);
+        fprintf(stderr, "Invalid address\n");
         exit(EXIT_FAILURE);
     }
-    if (argc > 2)
-    {
-        char *end;
-        unsigned long port = strtoul(argv[2], &end, 10);
 
-        if ((*end != '\0') || (port < 1) || (port > 65535))
-        {
-            fprintf(stderr, "Invalid port '%s'\n", argv[2]);
-            exit(EXIT_FAILURE);
-        }
-        server.sin_port = htons((uint16_t)port);
-    }
-    else
+    uint16_t port = argc > 2 ? string_to_ushort(argv[2]) : SERVER_PORT;
+
+    if (port == 0)
     {
-        server.sin_port = htons(SERVER_PORT);
+        fprintf(stderr, "Invalid port\n");
+        exit(EXIT_FAILURE);
     }
+    server.sin_port = htons(port);
 
     pthread_t thread[MAX_CLIENTS];
 

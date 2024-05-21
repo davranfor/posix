@@ -274,19 +274,18 @@ static void conn_loop(uint16_t port)
 
 int main(int argc, char *argv[])
 {
-    uint16_t port = SERVER_PORT;
-
-    if (argc > 1)
+    if ((argc == 2) && (strcmp(argv[1], "-h") == 0))
     {
-        char *end;
-        unsigned long num = strtoul(argv[1], &end, 10);
+        printf("Usage: %s [port]\n", argv[0]);
+        return 0;
+    }
 
-        if ((*end != '\0') || (num < 1) || (num > 65535))
-        {
-            fprintf(stderr, "Usage %s <port>\n", argv[0]);
-            exit(EXIT_FAILURE);
-        }
-        port = (uint16_t)num;
+    uint16_t port = argc > 1 ? string_to_ushort(argv[1]) : SERVER_PORT;
+
+    if (port == 0)  
+    {
+        fprintf(stderr, "Invalid port\n");
+        exit(EXIT_FAILURE);
     }
     conn_loop(port);
     return 0;
