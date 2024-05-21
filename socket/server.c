@@ -196,13 +196,13 @@ static void conn_close(struct pollfd *conn, struct poolfd *pool)
     pool_reset(pool);
 }
 
-static void conn_loop(uint16_t port)
+static void conn_loop(int sockfd)
 {
     enum {server = 0, maxfds = MAX_CLIENTS + 1};
     struct poolfd pool[maxfds] = {0};
     struct pollfd conn[maxfds] = {0};
 
-    conn_attach(&conn[server], conn_socket(port));
+    conn_attach(&conn[server], sockfd);
     for (nfds_t client = 1; client < maxfds; client++)
     {
         conn[client].fd = -1;
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Invalid port\n");
         exit(EXIT_FAILURE);
     }
-    conn_loop(port);
+    conn_loop(conn_socket(port));
     return 0;
 }
 
