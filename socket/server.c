@@ -280,7 +280,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    uint16_t port = argc > 1 ? string_to_ushort(argv[1]) : SERVER_PORT;
+    uint16_t port = argc > 1 ? string_to_uint16(argv[1]) : SERVER_PORT;
 
     if (port == 0)  
     {

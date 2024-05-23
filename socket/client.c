@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    uint16_t port = argc > 2 ? string_to_ushort(argv[2]) : SERVER_PORT;
+    uint16_t port = argc > 2 ? string_to_uint16(argv[2]) : SERVER_PORT;
 
     if (port == 0)
     {

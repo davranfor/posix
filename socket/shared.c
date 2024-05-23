@@ -52,7 +52,7 @@ void pool_reset(struct poolfd *pool)
     pool->type = 0;
 }
 
-unsigned short string_to_ushort(const char *str)
+uint16_t string_to_uint16(const char *str)
 {
     char *end;
     unsigned long result = strtoul(str, &end, 10);
@@ -61,7 +61,7 @@ unsigned short string_to_ushort(const char *str)
     {
         return 0;
     }
-    return (unsigned short)result;
+    return (uint16_t)result;
 }
 
 int unblock(int fd)

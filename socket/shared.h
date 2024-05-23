@@ -21,7 +21,7 @@ int pool_add(struct poolfd *, const char *, size_t);
 void pool_sync(struct poolfd *, size_t);
 void pool_reset(struct poolfd *);
 
-unsigned short string_to_ushort(const char *);
+uint16_t string_to_uint16(const char *);
 
 int unblock(int);
 
