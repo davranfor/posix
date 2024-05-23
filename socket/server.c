@@ -90,20 +90,20 @@ static ssize_t conn_recv(struct pollfd *conn, struct poolfd *pool)
         return 0;
     }
 
-    size_t size = (size_t)bytes;
+    size_t rcvd = (size_t)bytes;
 
-    if ((pool->data == NULL) && (buffer[size - 1] == '\0'))
+    if ((pool->data == NULL) && (buffer[rcvd - 1] == '\0'))
     {
-        pool_set(pool, buffer, size);
+        pool_set(pool, buffer, rcvd);
     }
     else
     {
-        if (!pool_add(pool, buffer, size))
+        if (!pool_add(pool, buffer, rcvd))
         {
             perror("pool_add");
             return 0;
         }
-        if (buffer[size - 1] != '\0')
+        if (buffer[rcvd - 1] != '\0')
         {
             return -1;
         }
