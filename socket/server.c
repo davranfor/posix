@@ -11,8 +11,6 @@
 #include <errno.h>
 #include "shared.h"
 
-#define BACKLOG 64
-
 static char buffer[BUFFER_SIZE];
 volatile sig_atomic_t stop;
 
@@ -47,7 +45,7 @@ static int conn_socket(uint16_t port)
         perror("bind");
         exit(EXIT_FAILURE);
     }
-    if (listen(fd, BACKLOG) == -1)
+    if (listen(fd, MAX_CLIENTS) == -1)
     {
         perror("listen");
         exit(EXIT_FAILURE);
