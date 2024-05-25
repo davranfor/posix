@@ -14,6 +14,7 @@
 #define BACKLOG 64
 
 static char buffer[BUFFER_SIZE];
+volatile sig_atomic_t stop;
 
 static int conn_socket(uint16_t port)
 {
@@ -56,6 +57,7 @@ static int conn_socket(uint16_t port)
 
 static void conn_signal(int signum)
 {
+    stop = 1;
     fprintf(stderr, "\nCaught signal %d (SIGINT)\n", signum);
 }
 
@@ -207,12 +209,7 @@ static void conn_loop(int sockfd)
     {
         conn[client].fd = -1;
     }
-    if (signal(SIGINT, conn_signal) == SIG_ERR)
-    {
-        perror("signal");
-        exit(EXIT_FAILURE);
-    }
-    while (1)
+    while (!stop)
     {
         if (poll(conn, maxfds, -1) == -1)
         {
@@ -285,6 +282,17 @@ int main(int argc, char *argv[])
     if (port == 0)  
     {
         fprintf(stderr, "Invalid port\n");
+        exit(EXIT_FAILURE);
+    }
+
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = conn_signal;
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGINT, &sa, NULL) == -1)
+    {
+        perror("sigaction");
         exit(EXIT_FAILURE);
     }
     conn_loop(conn_socket(port));

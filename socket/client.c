@@ -8,13 +8,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <errno.h>
 #include "shared.h"
 
 static atomic_int msgno;
 
-static void *handler(void *arg)
+static void *handler(void *server)
 {
-    struct sockaddr_in *server = arg;
     int fd;
 
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
@@ -23,7 +23,15 @@ static void *handler(void *arg)
         exit(EXIT_FAILURE);
     }
 
-    if (connect(fd, (struct sockaddr *)server, sizeof *server) == -1)
+    struct timeval tv = {CLIENT_TIMEOUT, 0};
+
+    if ((setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv) == -1) ||
+        (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv) == -1))
+    {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+    if (connect(fd, (struct sockaddr *)server, sizeof(struct sockaddr_in)) == -1)
     {
         perror("connect");
         exit(EXIT_FAILURE);

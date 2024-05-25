@@ -5,6 +5,9 @@
 
 #define SERVER_ADDR "127.0.0.1"
 #define SERVER_PORT 1234 
+
+#define CLIENT_TIMEOUT 60
+
 #define MAX_CLIENTS 10
 #define BUFFER_SIZE 32768
 
