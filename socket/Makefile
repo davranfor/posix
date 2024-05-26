@@ -4,10 +4,10 @@ LDLIBS = -lpthread
 
 all: server client
 
-server: server.c shared.c shared.h
+server: server.c shared.c shared.h pool.c pool.h
 	$(CC) $(CFLAGS) server.c shared.c pool.c -o server $(LDLIBS)
 
-client: client.c shared.c shared.h
+client: client.c shared.c shared.h pool.c pool.h
 	$(CC) $(CFLAGS) client.c shared.c pool.c -o client $(LDLIBS)
 
 clean:
