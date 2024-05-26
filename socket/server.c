@@ -3,16 +3,18 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/poll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
 #include "shared.h"
+#include "pool.h"
 
 static char buffer[BUFFER_SIZE];
-volatile sig_atomic_t stop;
+
+static volatile sig_atomic_t stop;
 
 static int conn_socket(uint16_t port)
 {
