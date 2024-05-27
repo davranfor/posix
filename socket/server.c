@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include "shared.h"
-#include "pool.h"
+#include "buffer.h"
 
 static char buffer[BUFFER_SIZE];
 
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
 
     struct sigaction sa;
 
-    memset(&sa, 0, sizeof(sa));
+    memset(&sa, 0, sizeof sa);
     sa.sa_handler = conn_signal;
     sa.sa_flags = SA_RESTART;
     if (sigaction(SIGINT, &sa, NULL) == -1)

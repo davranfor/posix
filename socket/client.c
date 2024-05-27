@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include "shared.h"
-#include "pool.h"
+#include "buffer.h"
 
 static atomic_int msgno;
 
