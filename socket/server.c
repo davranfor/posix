@@ -16,7 +16,7 @@ static char buffer[BUFFER_SIZE];
 
 static volatile sig_atomic_t stop;
 
-static int conn_socket(uint16_t port)
+static int server_socket(uint16_t port)
 {
     struct sockaddr_in server;
 
@@ -55,7 +55,7 @@ static int conn_socket(uint16_t port)
     return fd;
 }
 
-static void conn_signal(int signum)
+static void signal_handle(int signum)
 {
     fprintf(stderr, "\nCaught signal %d (SIGINT)\n", signum);
     stop = 1;
@@ -198,7 +198,7 @@ static void conn_close(struct pollfd *conn, struct poolfd *pool)
     pool_reset(pool);
 }
 
-static void conn_loop(int sockfd)
+static void server_loop(int sockfd)
 {
     enum {server = 0, maxfds = MAX_CLIENTS + 1};
     struct poolfd pool[maxfds] = {0};
@@ -288,14 +288,14 @@ int main(int argc, char *argv[])
     struct sigaction sa;
 
     memset(&sa, 0, sizeof sa);
-    sa.sa_handler = conn_signal;
+    sa.sa_handler = signal_handle;
     sa.sa_flags = SA_RESTART;
     if (sigaction(SIGINT, &sa, NULL) == -1)
     {
         perror("sigaction");
         exit(EXIT_FAILURE);
     }
-    conn_loop(conn_socket(port));
+    server_loop(server_socket(port));
     return 0;
 }
 
