@@ -2,7 +2,7 @@
 #include <string.h>
 #include "buffer.h"
 
-void pool_set(struct poolfd *pool, char *data, size_t size)
+char *pool_set(struct poolfd *pool, char *data, size_t size)
 {
     if (pool->type == POOL_ALLOCATED)
     {
@@ -11,9 +11,10 @@ void pool_set(struct poolfd *pool, char *data, size_t size)
     pool->type = POOL_BUFFERED;
     pool->data = data;
     pool->size = size;
+    return pool->data;
 }
 
-int pool_add(struct poolfd *pool, const char *data, size_t size)
+char *pool_add(struct poolfd *pool, const char *data, size_t size)
 {
     if (pool->type == POOL_BUFFERED)
     {
@@ -24,14 +25,13 @@ int pool_add(struct poolfd *pool, const char *data, size_t size)
 
     char *temp = realloc(pool->data, pool->size + size);
 
-    if (temp == NULL)
+    if (temp != NULL)
     {
-        return 0;
+        pool->data = temp;
+        memcpy(pool->data + pool->size, data, size);
+        pool->size += size;
     }
-    pool->data = temp;
-    memcpy(pool->data + pool->size, data, size);
-    pool->size += size;
-    return 1;
+    return temp;
 }
 
 void pool_sync(struct poolfd *pool, size_t sent)

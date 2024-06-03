@@ -16,6 +16,26 @@ static char buffer[BUFFER_SIZE];
 
 static volatile sig_atomic_t stop;
 
+static void signal_handle(int signum)
+{
+    fprintf(stderr, "\nCaught signal %d (SIGINT)\n", signum);
+    stop = 1;
+}
+
+static void signal_connect(void)
+{
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof sa);
+    sa.sa_handler = signal_handle;
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGINT, &sa, NULL) == -1)
+    {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+}
+
 static int server_socket(uint16_t port)
 {
     struct sockaddr_in server;
@@ -53,12 +73,6 @@ static int server_socket(uint16_t port)
         exit(EXIT_FAILURE);
     }
     return fd;
-}
-
-static void signal_handle(int signum)
-{
-    fprintf(stderr, "\nCaught signal %d (SIGINT)\n", signum);
-    stop = 1;
 }
 
 static void conn_attach(struct pollfd *conn, int fd)
@@ -284,17 +298,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Invalid port\n");
         exit(EXIT_FAILURE);
     }
-
-    struct sigaction sa;
-
-    memset(&sa, 0, sizeof sa);
-    sa.sa_handler = signal_handle;
-    sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGINT, &sa, NULL) == -1)
-    {
-        perror("sigaction");
-        exit(EXIT_FAILURE);
-    }
+    signal_connect();
     server_loop(server_socket(port));
     return 0;
 }
