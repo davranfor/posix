@@ -26,9 +26,9 @@ static void signal_connect(void)
 {
     struct sigaction sa;
 
-    memset(&sa, 0, sizeof sa);
     sa.sa_handler = signal_handle;
     sa.sa_flags = SA_RESTART;
+    sigemptyset(&sa.sa_mask);
     if (sigaction(SIGINT, &sa, NULL) == -1)
     {
         perror("sigaction");
@@ -212,13 +212,13 @@ static void conn_close(struct pollfd *conn, struct poolfd *pool)
     pool_reset(pool);
 }
 
-static void server_loop(int sockfd)
+static void server_loop(uint16_t port)
 {
     enum {server = 0, maxfds = MAX_CLIENTS + 1};
     struct poolfd pool[maxfds] = {0};
     struct pollfd conn[maxfds] = {0};
 
-    conn_attach(&conn[server], sockfd);
+    conn_attach(&conn[server], server_socket(port));
     for (nfds_t client = 1; client < maxfds; client++)
     {
         conn[client].fd = -1;
@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     signal_connect();
-    server_loop(server_socket(port));
+    server_loop(port);
     return 0;
 }
 
