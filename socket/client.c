@@ -99,9 +99,9 @@ static void *handler(void *server)
             }
             else
             {
-                if (!pool_add(&pool, buffer, rcvd))
+                if (!pool_put(&pool, buffer, rcvd))
                 {
-                    perror("pool_add");
+                    perror("pool_put");
                     goto stop;
                 }
                 data = pool.data;

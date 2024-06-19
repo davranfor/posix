@@ -116,9 +116,9 @@ static ssize_t conn_recv(struct pollfd *conn, struct poolfd *pool)
     }
     else
     {
-        if (!pool_add(pool, buffer, rcvd))
+        if (!pool_put(pool, buffer, rcvd))
         {
-            perror("pool_add");
+            perror("pool_put");
             return 0;
         }
         if (buffer[rcvd - 1] != '\0')
@@ -157,9 +157,9 @@ static ssize_t conn_send(struct pollfd *conn, struct poolfd *pool)
     }
     if (pool->type == POOL_BUFFERED)
     {
-        if (!pool_add(pool, data + sent, size - sent))
+        if (!pool_put(pool, data + sent, size - sent))
         {
-            perror("pool_add");
+            perror("pool_put");
             return 0;
         }
     }
