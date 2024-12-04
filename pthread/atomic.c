@@ -3,7 +3,6 @@
 #include <stdatomic.h>
 #include <pthread.h>
 
-static signed int normal_counter;
 static atomic_int atomic_counter;
 
 void *thread_handler(void *arg)
@@ -11,8 +10,7 @@ void *thread_handler(void *arg)
     (void)arg;
     for (int i = 0; i < 10000; i++)
     {
-        ++normal_counter; // Undefined behavior
-        ++atomic_counter;
+        atomic_fetch_add(&atomic_counter, 1);
     }
     return NULL;
 }
@@ -38,7 +36,6 @@ int main(void)
             exit(EXIT_FAILURE);
         }
     }
-    printf("Normal counter: %d\n", normal_counter);
     printf("Atomic counter: %d\n", atomic_counter);
     return 0;
 }
